@@ -18,6 +18,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+
     /**
      * @description Manages user profile data, ensuring that only the authenticated user can access their own profile.
      * @path /users/{userId}
@@ -28,23 +40,47 @@ service cloud.firestore {
      * @principle Enforces document ownership for all read and write operations. Validates path-based ownership for data consistency.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-          return isOwner(userId) && resource != null;
-      }
-
       allow get: if isOwner(userId);
       allow list: if false; // Listing user profiles is not permitted.
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Manages chat documents.
+     * @path /chats/{chatId}
+     * @principle Enforces that users can only create and read their own chats. Listing all chats is not allowed.
+     */
+    match /chats/{chatId} {
+      // Users can create a chat if the userId in the document matches their own.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Users can get a single chat document if they are the owner.
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Users can query for their own chats, but cannot list all chats.
+      allow list: if isSignedIn() && request.query.get('where')[0][2] == request.auth.uid;
+
+      // Users cannot update or delete the top-level chat document.
+      allow update, delete: if false;
+
+      /**
+       * @description Manages messages within a chat.
+       * @path /chats/{chatId}/messages/{messageId}
+       * @principle Allows users to read and add messages to their own chats.
+       */
+      match /messages/{messageId} {
+        // Users can list/read messages if they own the parent chat document.
+        allow get, list: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
+
+        // Users can create a message if they own the parent chat.
+        // The AI assistant (server-side) also needs to create messages.
+        allow create: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
+
+        // Messages are immutable.
+        allow update, delete: if false;
+      }
     }
   }
 }
