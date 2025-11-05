@@ -6,13 +6,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plane, Hotel, Sparkles, Mountain } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Search, Plane, Hotel, Mountain } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
-type SearchType = SearchCategory | 'full';
 
 export default function PlanPage() {
   const { user, isUserLoading } = useUser();
@@ -20,7 +18,7 @@ export default function PlanPage() {
   const [tripDescription, setTripDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(
-    new Set(['flights', 'hotels', 'experiences'])
+    new Set(['flights'])
   );
 
   useEffect(() => {
@@ -44,17 +42,6 @@ export default function PlanPage() {
     });
   };
 
-  const handleFullSearchClick = () => {
-    if (selectedCategories.size === 3) {
-        // If all are selected, and we click full again, do nothing to prevent full deselection.
-        // Or, we could decide to toggle to just one, e.g., flights. For now, we do nothing.
-    } else {
-        setSelectedCategories(new Set(['flights', 'hotels', 'experiences']));
-    }
-  };
-
-  const isFullSearch = selectedCategories.size === 3;
-
   const placeholders: { [key: string]: string } = {
     'flights': "'Un vuelo a Bali para 2 personas en diciembre'",
     'hotels': "'Hoteles de 5 estrellas en Roma con piscina'",
@@ -66,8 +53,9 @@ export default function PlanPage() {
   };
 
   const placeholderKey = useMemo(() => {
+    if (selectedCategories.size === 0) return 'flights'; // Fallback
     const sortedCategories = Array.from(selectedCategories).sort().join(',');
-    return sortedCategories;
+    return sortedCategories in placeholders ? sortedCategories : 'flights,hotels,experiences';
   }, [selectedCategories]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -119,35 +107,27 @@ export default function PlanPage() {
               {option.label}
             </Button>
           ))}
-           <Button
-              key="full"
-              variant={isFullSearch ? 'default' : 'outline'}
-              onClick={handleFullSearchClick}
-              className="rounded-full transition-all duration-300 ease-in-out hover:shadow-lg"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Completo
-            </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full space-y-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
             <div className="relative w-full">
                <AnimatePresence mode="wait">
                   <motion.div
                     key={placeholderKey}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
                     className="absolute inset-0 pointer-events-none"
                   >
                      <Input
                         type="text"
                         readOnly
+                        value=""
                         placeholder={placeholders[placeholderKey]}
-                        className="h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-transparent border-none placeholder:text-muted-foreground placeholder:transition-opacity placeholder:duration-300"
+                        className="h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent placeholder:text-muted-foreground"
                     />
                   </motion.div>
                 </AnimatePresence>
@@ -155,7 +135,8 @@ export default function PlanPage() {
                     type="text"
                     value={tripDescription}
                     onChange={(e) => setTripDescription(e.target.value)}
-                    className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-transparent"
+                    className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-transparent"
+                    autoFocus
                 />
             </div>
           </div>
