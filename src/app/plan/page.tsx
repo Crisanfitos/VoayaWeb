@@ -113,31 +113,25 @@ export default function PlanPage() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
             <div className="relative w-full">
-               <AnimatePresence mode="wait">
-                  <motion.div
-                    key={placeholderKey}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute inset-0 pointer-events-none"
-                  >
-                     <Input
-                        type="text"
-                        readOnly
-                        value=""
-                        placeholder={placeholders[placeholderKey]}
-                        className="h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent placeholder:text-muted-foreground"
-                    />
-                  </motion.div>
-                </AnimatePresence>
-                <Input
-                    type="text"
-                    value={tripDescription}
-                    onChange={(e) => setTripDescription(e.target.value)}
-                    className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-transparent"
-                    autoFocus
-                />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={placeholderKey}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="w-full"
+                >
+                  <Input
+                      type="text"
+                      value={tripDescription}
+                      onChange={(e) => setTripDescription(e.target.value)}
+                      placeholder={placeholders[placeholderKey]}
+                      className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-muted-foreground"
+                      autoFocus
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
           <Button 
