@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Twitter, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Logo } from "../logo";
 
 export function Footer() {
   return (
@@ -7,8 +8,44 @@ export function Footer() {
       <div className="container mx-auto px-4 py-12 md:px-6">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="space-y-4">
-            <Link href="#" className="font-headline text-3xl font-bold">
-              Voaya
+            <Link href="#" className="block">
+              <svg
+                width="130"
+                height="35"
+                viewBox="0 0 130 35"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="Voaya Logo"
+              >
+                <path
+                  d="M9.33333 1L1 18.25L9.33333 30H26L17.6667 18.25L26 1H9.33333Z"
+                  className="stroke-primary-foreground"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M17.6667 18.25L26 1H34.3333L26 13.5L34.3333 26H26L17.6667 18.25Z"
+                  className="fill-primary-foreground"
+                />
+                <text
+                  x="40"
+                  y="21"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="20"
+                  fontWeight="bold"
+                  className="fill-primary-foreground/80"
+                >
+                  VOAYA
+                </text>
+                <text
+                  x="40"
+                  y="33"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="10"
+                  className="fill-primary-foreground/60"
+                >
+                  Tu viaje, ya listo.
+                </text>
+              </svg>
             </Link>
             <p className="text-sm text-primary-foreground/70">
               Viajar, reinventado por la IA.

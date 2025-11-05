@@ -11,6 +11,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+import { Logo } from "../logo";
 
 const navLinks = [
   { href: "#", label: "Inicio" },
@@ -35,9 +36,10 @@ export function Navbar() {
     <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
       {navLinks.map((link) => {
         const LinkComponent = isMobile ? SheetClose : React.Fragment;
+        const props = isMobile ? { asChild: true } : {};
         
         return (
-          <LinkComponent key={link.label}>
+          <LinkComponent {...props} key={link.label}>
             <Link href={link.href} passHref>
               <span className="text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
                 {link.label}
@@ -58,9 +60,7 @@ export function Navbar() {
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="#" className="flex items-center space-x-2">
-          <span className="font-headline text-2xl font-bold text-primary">
-            Voaya
-          </span>
+          <Logo />
         </Link>
         <div className="hidden md:flex items-center space-x-8">
           {renderNavLinks(false)}
@@ -78,7 +78,7 @@ export function Navbar() {
             <SheetContent side="right">
               <div className="flex flex-col space-y-8 pt-10">
                 <Link href="#" className="flex items-center space-x-2 self-start">
-                   <span className="font-headline text-2xl font-bold text-primary">Voaya</span>
+                   <Logo />
                 </Link>
                 {renderNavLinks(true)}
                 <SheetClose asChild>
