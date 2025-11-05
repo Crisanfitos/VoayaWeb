@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Define the schema for a single message in the chat history
 const ChatMessageSchema = z.object({
@@ -17,12 +17,12 @@ const ChatMessageSchema = z.object({
   content: z.array(z.object({ text: z.string() })),
 });
 
-export const TravelPlannerInputSchema = z.object({
+const TravelPlannerInputSchema = z.object({
   history: z.array(ChatMessageSchema).describe('The history of the conversation so far.'),
 });
 export type TravelPlannerInput = z.infer<typeof TravelPlannerInputSchema>;
 
-export const TravelPlannerOutputSchema = z.object({
+const TravelPlannerOutputSchema = z.object({
   reply: z.string().describe('The AI assistant\'s response to the user.'),
 });
 export type TravelPlannerOutput = z.infer<typeof TravelPlannerOutputSchema>;
