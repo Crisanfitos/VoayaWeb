@@ -63,6 +63,7 @@ export default function SettingsPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -125,10 +126,11 @@ export default function SettingsPage() {
   
   const handleDeleteAccount = () => {
     if (!auth || !user) return;
+    setIsDeleting(true);
     deleteUserAccount(auth, user);
   };
 
-  if (isUserLoading || isProfileLoading) {
+  if (isUserLoading || isProfileLoading || isDeleting) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader />

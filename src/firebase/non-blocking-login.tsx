@@ -11,7 +11,7 @@ import {
   User,
 } from 'firebase/auth';
 import { toast } from '@/hooks/use-toast';
-import { getFirestore, doc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
 
 /** Initiate anonymous sign-in (non-blocking). */
@@ -119,12 +119,14 @@ export function deleteUserAccount(auth: Auth, user: User): void {
   const firestore = getFirestore(auth.app);
   const userDocRef = doc(firestore, `users/${user.uid}`);
 
+  // First, delete the Firestore document.
+  deleteDocumentNonBlocking(userDocRef);
+
+  // Then, delete the user from Authentication.
   deleteUser(user)
     .then(() => {
-      // After successful auth deletion, delete Firestore document
-      deleteDocumentNonBlocking(userDocRef);
       toast({ title: "Cuenta Eliminada", description: "Tu cuenta ha sido eliminada permanentemente." });
-      // The useUser hook will automatically handle redirection.
+      // The useUser hook and page logic will handle redirection.
     })
     .catch(error => {
       console.error("Delete Account Error:", error);
