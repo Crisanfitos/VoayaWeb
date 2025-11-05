@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, `users/${user.uid}/profile`);
+    return doc(firestore, `users/${user.uid}`);
   }, [firestore, user]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);

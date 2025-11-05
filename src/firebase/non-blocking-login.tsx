@@ -37,7 +37,7 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
     .then(userCredential => {
         const user = userCredential.user;
         const firestore = getFirestore(authInstance.app);
-        const userProfileRef = doc(firestore, `users/${user.uid}/profile`);
+        const userProfileRef = doc(firestore, `users/${user.uid}`);
 
         const newProfile = {
             id: user.uid,

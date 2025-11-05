@@ -5,7 +5,7 @@
  * This ruleset enforces a strict user-ownership model, ensuring that only authenticated users can access and modify their own profile data.
  *
  * Data Structure:
- * All user profile data is nested under the `/users/{userId}/profile` path.
+ * All user profile data is stored in a document at `/users/{userId}`.
  *
  * Key Security Decisions:
  * - Users can only read and write their own profile data.
@@ -20,14 +20,14 @@ service cloud.firestore {
 
     /**
      * @description Manages user profile data, ensuring that only the authenticated user can access their own profile.
-     * @path /users/{userId}/profile
-     * @allow (create) - Authenticated user with UID 'user123' can create their profile at /users/user123/profile if the 'id' field in the data matches 'user123'.
-     * @allow (get, update, delete) - Authenticated user with UID 'user123' can read/modify/delete their profile at /users/user123/profile.
-     * @deny (create) - Authenticated user with UID 'user456' cannot create a profile at /users/user123/profile.
-     * @deny (get, update, delete) - Authenticated user with UID 'user456' cannot read/modify/delete the profile at /users/user123/profile.
+     * @path /users/{userId}
+     * @allow (create) - Authenticated user with UID 'user123' can create their profile at /users/user123 if the 'id' field in the data matches 'user123'.
+     * @allow (get, update, delete) - Authenticated user with UID 'user123' can read/modify/delete their profile at /users/user123.
+     * @deny (create) - Authenticated user with UID 'user456' cannot create a profile at /users/user123.
+     * @deny (get, update, delete) - Authenticated user with UID 'user456' cannot read/modify/delete the profile at /users/user123.
      * @principle Enforces document ownership for all read and write operations. Validates path-based ownership for data consistency.
      */
-    match /users/{userId}/profile {
+    match /users/{userId} {
       function isSignedIn() {
         return request.auth != null;
       }
