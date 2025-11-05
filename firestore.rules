@@ -61,7 +61,7 @@ service cloud.firestore {
       
       // Users can query for their own chats, but cannot list all chats.
       // This rule requires a 'where("userId", "==", request.auth.uid)' clause in the query.
-      allow list: if isSignedIn() && request.query.where.size() == 1 && request.query.where[0].field == 'userId' && request.query.where[0].op == '==' && request.query.where[0].value == request.auth.uid;
+      allow list: if isSignedIn() && request.query.get('where').find(constraint => constraint.field == 'userId' && constraint.op == '==' && constraint.value == request.auth.uid) != null;
       
       // Users cannot update or delete the top-level chat document.
       allow update, delete: if false;
