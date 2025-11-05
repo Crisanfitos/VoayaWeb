@@ -1,25 +1,38 @@
 'use client';
 
-import { useUser } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useUser, useFirestore, useAuth } from '@/firebase';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { doc, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Plane, Hotel, Mountain } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-
+import { ChatView } from '@/components/chat/chat-view';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
-export default function PlanPage() {
+function PlanPageComponent() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
+  const searchParams = useSearchParams();
+
+  // State for the initial planning form
   const [tripDescription, setTripDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(
-    new Set(['flights'])
-  );
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights']));
+  
+  // State for the chat view
+  const [chatId, setChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const chatIdFromUrl = searchParams.get('chatId');
+    if (chatIdFromUrl) {
+      setChatId(chatIdFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -31,7 +44,6 @@ export default function PlanPage() {
     setSelectedCategories(prev => {
       const newSelection = new Set(prev);
       if (newSelection.has(category)) {
-        // Prevent deselecting the last item
         if (newSelection.size > 1) {
           newSelection.delete(category);
         }
@@ -51,23 +63,46 @@ export default function PlanPage() {
     'hotels,experiences': "'Hotel boutique en Kioto y una clase de ceremonia del té'",
     'flights,hotels,experiences': "'Un viaje completo a Japón para 3 personas en verano'",
   };
-
+  
   const placeholderKey = useMemo(() => {
-    if (selectedCategories.size === 0) return 'flights'; // Fallback
     const sortedCategories = Array.from(selectedCategories).sort().join(',');
-    return sortedCategories in placeholders ? sortedCategories : 'flights,hotels,experiences';
+    return placeholders[sortedCategories] || placeholders['flights,hotels,experiences'];
   }, [selectedCategories]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tripDescription) return;
-    setIsLoading(true);
-    // We will implement the chat logic in the next step
-    console.log('Trip Description:', tripDescription, 'Search Categories:', Array.from(selectedCategories));
-    // For now, just simulate a network request
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+    if (!tripDescription || !firestore || !user) return;
+
+    setIsStartingChat(true);
+
+    try {
+      // 1. Create a new chat document in Firestore
+      const chatCollectionRef = collection(firestore, 'chats');
+      const newChatDoc = await addDoc(chatCollectionRef, {
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        title: tripDescription.substring(0, 40) + '...', // Use first part of message as title
+      });
+
+      // 2. Add the first message to the 'messages' subcollection
+      const messagesCollectionRef = collection(firestore, 'chats', newChatDoc.id, 'messages');
+      await addDoc(messagesCollectionRef, {
+        text: tripDescription,
+        role: 'user',
+        createdAt: serverTimestamp(),
+      });
+      
+      // 3. Set the chatId to switch to the chat view, and update URL
+      router.push(`/plan?chatId=${newChatDoc.id}`);
+      setChatId(newChatDoc.id);
+
+    } catch (error) {
+      console.error("Error starting new chat:", error);
+      // You might want to show a toast message here
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   if (isUserLoading) {
@@ -78,10 +113,14 @@ export default function PlanPage() {
     );
   }
 
-  if (!user) {
+  if (!user || !firestore) {
     return null;
   }
-  
+
+  if (chatId) {
+    return <ChatView chatId={chatId} />;
+  }
+
   const searchOptions = [
     { id: 'flights', label: 'Vuelos', icon: <Plane className="mr-2 h-4 w-4" /> },
     { id: 'hotels', label: 'Hoteles', icon: <Hotel className="mr-2 h-4 w-4" /> },
@@ -112,38 +151,45 @@ export default function PlanPage() {
         <form onSubmit={handleSubmit} className="w-full space-y-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
-            <div className="relative w-full">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={placeholderKey}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="w-full"
-                >
-                  <Input
-                      type="text"
-                      value={tripDescription}
-                      onChange={(e) => setTripDescription(e.target.value)}
-                      placeholder={placeholders[placeholderKey]}
-                      className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-muted-foreground"
-                      autoFocus
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={placeholderKey}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                 <Input
+                    type="text"
+                    value={tripDescription}
+                    onChange={(e) => setTripDescription(e.target.value)}
+                    placeholder={placeholderKey}
+                    className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-muted-foreground"
+                    autoFocus
                   />
-                </motion.div>
-              </AnimatePresence>
-            </div>
+              </motion.div>
+            </AnimatePresence>
           </div>
           <Button 
             type="submit" 
             size="lg" 
             className="h-12 px-10 rounded-full bg-accent text-accent-foreground hover:bg-accent/90 transition-transform duration-300 ease-in-out disabled:scale-100 enabled:hover:scale-105"
-            disabled={isLoading || !tripDescription}
+            disabled={isStartingChat || !tripDescription}
           >
-            {isLoading ? <Loader /> : 'Enviar'}
+            {isStartingChat ? <Loader /> : 'Enviar'}
           </Button>
         </form>
       </div>
     </div>
   );
+}
+
+
+export default function PlanPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader /></div>}>
+      <PlanPageComponent />
+    </Suspense>
+  )
 }
