@@ -4,6 +4,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { doc } from 'firebase/firestore';
+import { Loader } from '@/components/ui/loader';
 
 interface UserProfile {
     firstName: string;
@@ -30,7 +31,11 @@ export default function DashboardPage() {
   }, [user, isUserLoading, router]);
 
   if (isUserLoading || isProfileLoading) {
-    return <p>Loading...</p>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader />
+      </div>
+    );
   }
   
   if(!user){
