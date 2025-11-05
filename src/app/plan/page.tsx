@@ -47,7 +47,7 @@ export default function PlanPage() {
     'hotels': "'Hoteles de 5 estrellas en Roma con piscina'",
     'experiences': "'Ruta del vino en la Toscana'",
     'flights,hotels': "'Vuelo y hotel para una escapada a París el próximo fin de semana'",
-    'flights,experiences': "'Vuelos a Costa Rica y tour por la selva'",
+    'flights,experiences': "'Vuelos a Costa Rica y un tour por la selva para ver perezosos'",
     'hotels,experiences': "'Hotel boutique en Kioto y una clase de ceremonia del té'",
     'flights,hotels,experiences': "'Un viaje completo a Japón para 3 personas en verano'",
   };
