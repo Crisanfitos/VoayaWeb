@@ -48,17 +48,21 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages chat documents.
+     * @description Manages chat documents and their subcollections.
      * @path /chats/{chatId}
-     * @principle Enforces that users can only create and read their own chats. Listing all chats is not allowed.
+     * @principle Enforces that users can only interact with their own chat data.
      */
     match /chats/{chatId} {
-      // Users can create, get, and query for their own chats.
-      // For create, the incoming data's userId must match the user's uid.
-      // For reads (get, list), the existing data's userId must match.
-      allow read, create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid);
+      /**
+       * @allow (get) - A user can get a single chat document if they are the owner.
+       * @allow (create) - A user can create a new chat if the `userId` in the new data matches their own UID.
+       * @allow (list) - A user can list chats only if they filter the query by their own `userId`. This is critical for security.
+       */
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
 
-      // Users cannot update or delete the top-level chat document.
+      // Users cannot update or delete the top-level chat document directly.
       allow update, delete: if false;
 
       /**
@@ -71,8 +75,6 @@ service cloud.firestore {
         allow get, list: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
 
         // Users can create a message if they own the parent chat.
-        // The 'user' role message's data must have a role of 'user'.
-        // The 'assistant' role message is created by the server, so we trust it.
         allow create: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
 
         // Messages are immutable.
