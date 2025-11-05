@@ -11,7 +11,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-      router.push('/dashboard');
+      router.push('/plan');
     }
   }, [user, isUserLoading, router]);
 

@@ -24,7 +24,7 @@ const navLinks = [
 ];
 
 const privateNavLinks = [
-    { href: "/dashboard", label: "Dashboard" },
+    { href: "/plan", label: "Planificador" },
     { href: "/chats", label: "Chats" },
     { href: "/my-trips", label: "Mis Viajes" },
     { href: "/settings", label: "Configuración" },
