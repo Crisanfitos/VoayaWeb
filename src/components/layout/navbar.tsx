@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -34,14 +34,15 @@ export function Navbar() {
   const renderNavLinks = (isMobile: boolean) => (
     <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
       {navLinks.map((link) => {
-        const LinkComponent = isMobile ? SheetClose : "a";
-        const props = isMobile ? { asChild: true } : { href: link.href };
+        const LinkComponent = isMobile ? SheetClose : React.Fragment;
         
         return (
-          <LinkComponent {...props} key={link.label}>
-            <a className="text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
-              {link.label}
-            </a>
+          <LinkComponent key={link.label}>
+            <Link href={link.href} passHref>
+              <span className="text-sm font-medium text-foreground/80 transition-colors hover:text-foreground">
+                {link.label}
+              </span>
+            </Link>
           </LinkComponent>
         );
       })}
