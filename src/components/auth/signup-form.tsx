@@ -91,7 +91,7 @@ export function SignUpForm() {
                     <Input type="password" placeholder="Confirma tu contraseña" {...field} />
                   </FormControl>
                   <FormMessage />
-                </Form_Item>
+                </FormItem>
               )}
             />
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
