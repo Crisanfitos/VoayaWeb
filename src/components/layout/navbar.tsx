@@ -23,6 +23,13 @@ const navLinks = [
   { href: "/#contact", label: "Contacto" },
 ];
 
+const privateNavLinks = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/chats", label: "Chats" },
+    { href: "/my-trips", label: "Mis Viajes" },
+    { href: "/settings", label: "Configuración" },
+]
+
 export function Navbar() {
   const [hasScrolled, setHasScrolled] = useState(false);
   const { user, isUserLoading } = useUser();
@@ -42,9 +49,9 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const renderNavLinks = (isMobile: boolean) => (
+  const renderNavLinks = (links: {href: string, label: string}[], isMobile: boolean) => (
     <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
-      {navLinks.map((link) => {
+      {links.map((link) => {
         const LinkComponent = isMobile ? SheetClose : 'div';
         const props = isMobile ? { asChild: true } : {};
         
@@ -69,9 +76,6 @@ export function Navbar() {
     if (user) {
       return (
         <div className={cn("flex items-center", isMobile ? "flex-col space-y-4 w-full" : "space-x-4")}>
-          <Button asChild variant="ghost">
-             <Link href="/dashboard">Dashboard</Link>
-          </Button>
           <Button onClick={handleSignOut} variant="outline">
             <LogOut className="mr-2 h-4 w-4" />
             Cerrar Sesión
@@ -104,7 +108,7 @@ export function Navbar() {
           <Logo />
         </Link>
         <div className="hidden md:flex items-center space-x-8">
-          {renderNavLinks(false)}
+          {renderNavLinks(user ? privateNavLinks : navLinks, false)}
           {renderAuthButtons(false)}
         </div>
         <div className="md:hidden">
@@ -119,7 +123,7 @@ export function Navbar() {
                 <Link href="/" className="flex items-center space-x-2 self-start">
                    <Logo />
                 </Link>
-                {renderNavLinks(true)}
+                {renderNavLinks(user ? privateNavLinks : navLinks, true)}
                 <div className="border-t border-border pt-6">
                   {renderAuthButtons(true)}
                 </div>
