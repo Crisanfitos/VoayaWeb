@@ -1,18 +1,21 @@
 'use client';
 import {
-  Auth, // Import Auth type for type hinting
+  Auth, 
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  // Assume getAuth and app are initialized elsewhere
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
+  deleteUser,
+  User,
 } from 'firebase/auth';
 import { toast } from '@/hooks/use-toast';
-import { getFirestore, doc } from 'firebase/firestore';
-import { setDocumentNonBlocking } from './non-blocking-updates';
+import { getFirestore, doc, deleteDoc } from 'firebase/firestore';
+import { setDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
 
 /** Initiate anonymous sign-in (non-blocking). */
 export function initiateAnonymousSignIn(authInstance: Auth): void {
-  // CRITICAL: Call signInAnonymously directly. Do NOT use 'await signInAnonymously(...)'.
   signInAnonymously(authInstance).catch(error => {
     console.error("Anonymous Sign-In Error:", error);
     toast({
@@ -21,7 +24,6 @@ export function initiateAnonymousSignIn(authInstance: Auth): void {
         description: "No se pudo iniciar sesión de forma anónima. " + error.message,
     });
   });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
 }
 
 type UserProfileData = {
@@ -32,7 +34,6 @@ type UserProfileData = {
 
 /** Initiate email/password sign-up (non-blocking). */
 export function initiateEmailSignUp(authInstance: Auth, email: string, password: string, profileData: UserProfileData): void {
-  // CRITICAL: Call createUserWithEmailAndPassword directly. Do NOT use 'await createUserWithEmailAndPassword(...)'.
   createUserWithEmailAndPassword(authInstance, email, password)
     .then(userCredential => {
         const user = userCredential.user;
@@ -64,12 +65,10 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
             description: description,
         });
     });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
 }
 
 /** Initiate email/password sign-in (non-blocking). */
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string): void {
-  // CRITICAL: Call signInWithEmailAndPassword directly. Do NOT use 'await signInWithEmailAndPassword(...)'.
   signInWithEmailAndPassword(authInstance, email, password)
     .catch(error => {
         console.error("Sign-In Error:", error);
@@ -83,5 +82,57 @@ export function initiateEmailSignIn(authInstance: Auth, email: string, password:
             description: description,
         });
     });
-  // Code continues immediately. Auth state change is handled by onAuthStateChanged listener.
+}
+
+/** Reauthenticates and changes the user's password. */
+export function reauthenticateAndChangePassword(auth: Auth, user: User, currentPassword: string, newPassword: string): void {
+  if (!user.email) {
+      toast({ variant: "destructive", title: "Error", description: "No se encontró el email del usuario." });
+      return;
+  }
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  
+  reauthenticateWithCredential(user, credential)
+    .then(() => {
+      updatePassword(user, newPassword)
+        .then(() => {
+          toast({ title: "Éxito", description: "Tu contraseña ha sido actualizada." });
+        })
+        .catch(error => {
+          console.error("Password Update Error:", error);
+          toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar la contraseña: " + error.message });
+        });
+    })
+    .catch(error => {
+      console.error("Reauthentication Error:", error);
+      let description = "Ocurrió un error al verificar tu identidad.";
+      if (error.code === 'auth/wrong-password') {
+          description = 'La contraseña actual es incorrecta.';
+      }
+      toast({ variant: "destructive", title: "Error de Autenticación", description });
+    });
+}
+
+
+/** Deletes the user account and their Firestore data. */
+export function deleteUserAccount(auth: Auth, user: User): void {
+  const firestore = getFirestore(auth.app);
+  const userDocRef = doc(firestore, `users/${user.uid}`);
+
+  deleteUser(user)
+    .then(() => {
+      // After successful auth deletion, delete Firestore document
+      deleteDocumentNonBlocking(userDocRef);
+      toast({ title: "Cuenta Eliminada", description: "Tu cuenta ha sido eliminada permanentemente." });
+      // The useUser hook will automatically handle redirection.
+    })
+    .catch(error => {
+      console.error("Delete Account Error:", error);
+      let description = "Ocurrió un error al eliminar tu cuenta.";
+      // If re-authentication is needed
+      if (error.code === 'auth/requires-recent-login') {
+        description = "Esta operación es sensible y requiere autenticación reciente. Por favor, inicia sesión de nuevo e inténtalo otra vez.";
+      }
+      toast({ variant: "destructive", title: "Error de Eliminación", description });
+    });
 }
