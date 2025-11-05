@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 // Define the schema for a single message in the chat history
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
+  role: z.enum(['user', 'model', 'tool', 'system']),
   content: z.array(z.object({ text: z.string() })),
 });
 
@@ -50,12 +50,19 @@ const travelPlannerAIFlow = ai.defineFlow(
     - Never mention that you are an AI. You are Voaya, the travel expert.
     `;
 
+    // The 'assistant' role in Firestore needs to be mapped to 'model' for the AI
+    const mappedHistory = input.history.map(message => ({
+      ...message,
+      role: message.role === 'assistant' ? 'model' : message.role,
+    }));
+
+
     const model = ai.model('googleai/gemini-2.5-flash');
     const { output } = await ai.generate({
       model,
       prompt: {
         system: systemPrompt,
-        messages: input.history,
+        messages: mappedHistory,
       },
       output: {
         schema: TravelPlannerOutputSchema,

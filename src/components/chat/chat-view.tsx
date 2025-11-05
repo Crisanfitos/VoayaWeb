@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
-import { travelPlannerFlow } from '@/ai/flows/travel-planner-flow';
+import { travelPlannerFlow, type TravelPlannerInput } from '@/ai/flows/travel-planner-flow';
 
 interface Message {
   id: string;
@@ -46,13 +46,13 @@ export function ChatView({ chatId }: ChatViewProps) {
         setIsThinking(true);
         try {
           // Convert Firestore messages to the format expected by the AI flow
-          const chatHistory = messages.map(m => ({ role: m.role, content: [{text: m.text}] }));
+          const chatHistory = messages.map(m => ({ role: m.role, content: [{text: m.text}] })) as TravelPlannerInput['history'];
           
           const response = await travelPlannerFlow({ history: chatHistory });
           
           if (response.reply && firestore) {
             const messagesCollectionRef = collection(firestore, `chats/${chatId}/messages`);
-            await addDoc(messagesCollectionRef, {
+            addDocumentNonBlocking(messagesCollectionRef, {
               text: response.reply,
               role: 'assistant',
               createdAt: serverTimestamp(),
@@ -62,7 +62,7 @@ export function ChatView({ chatId }: ChatViewProps) {
           console.error("Error getting AI response:", error);
            if (firestore) {
              const messagesCollectionRef = collection(firestore, `chats/${chatId}/messages`);
-             await addDoc(messagesCollectionRef, {
+             addDocumentNonBlocking(messagesCollectionRef, {
                 text: "Lo siento, he encontrado un error y no puedo responder en este momento.",
                 role: 'assistant',
                 createdAt: serverTimestamp(),
@@ -85,11 +85,12 @@ export function ChatView({ chatId }: ChatViewProps) {
     setNewMessage('');
 
     const messagesCollectionRef = collection(firestore, `chats/${chatId}/messages`);
-    await addDoc(messagesCollectionRef, {
+    const messageData = {
       text,
       role: 'user',
       createdAt: serverTimestamp(),
-    });
+    };
+    addDocumentNonBlocking(messagesCollectionRef, messageData);
   };
 
   return (

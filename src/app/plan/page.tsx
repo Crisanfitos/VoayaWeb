@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useFirestore, useAuth } from '@/firebase';
+import { useUser, useFirestore, useAuth, addDocumentNonBlocking } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { doc, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
@@ -76,33 +76,37 @@ function PlanPageComponent() {
 
     setIsStartingChat(true);
 
-    try {
-      // 1. Create a new chat document in Firestore
-      const chatCollectionRef = collection(firestore, 'chats');
-      const newChatDoc = await addDoc(chatCollectionRef, {
-        userId: user.uid,
-        createdAt: serverTimestamp(),
-        title: tripDescription.substring(0, 40) + '...', // Use first part of message as title
-      });
+    // 1. Create a new chat document in Firestore
+    const chatCollectionRef = collection(firestore, 'chats');
+    const chatData = {
+      userId: user.uid,
+      createdAt: serverTimestamp(),
+      title: tripDescription.substring(0, 40) + '...', // Use first part of message as title
+    };
+    
+    // Use the non-blocking function and get the promise for the new doc
+    const newChatDocPromise = addDocumentNonBlocking(chatCollectionRef, chatData);
 
+    // Continue immediately
+    const newChatDoc = await newChatDocPromise; // This will resolve with the new DocumentReference
+
+    if (newChatDoc) {
       // 2. Add the first message to the 'messages' subcollection
       const messagesCollectionRef = collection(firestore, 'chats', newChatDoc.id, 'messages');
-      await addDoc(messagesCollectionRef, {
+      const messageData = {
         text: tripDescription,
         role: 'user',
         createdAt: serverTimestamp(),
-      });
+      };
+      addDocumentNonBlocking(messagesCollectionRef, messageData);
       
       // 3. Set the chatId to switch to the chat view, and update URL
       router.push(`/plan?chatId=${newChatDoc.id}`);
       setChatId(newChatDoc.id);
-
-    } catch (error) {
-      console.error("Error starting new chat:", error);
-      // You might want to show a toast message here
-    } finally {
-      setIsStartingChat(false);
     }
+    
+    // We don't need a `catch` or `finally` block because errors are handled globally
+    setIsStartingChat(false);
   };
 
   if (isUserLoading) {
