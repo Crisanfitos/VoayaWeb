@@ -57,9 +57,8 @@ const travelPlannerAIFlow = ai.defineFlow(
     }));
 
 
-    const model = ai.model('googleai/gemini-2.5-flash');
     const { output } = await ai.generate({
-      model,
+      model: 'googleai/gemini-2.5-flash',
       prompt: {
         system: systemPrompt,
         messages: mappedHistory,
