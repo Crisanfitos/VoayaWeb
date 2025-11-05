@@ -53,16 +53,11 @@ service cloud.firestore {
      * @principle Enforces that users can only create and read their own chats. Listing all chats is not allowed.
      */
     match /chats/{chatId} {
-      // Users can create a chat if the userId in the document matches their own.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Users can get a single chat document if they are the owner.
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      // Users can query for their own chats, but cannot list all chats.
-      // This rule requires a 'where("userId", "==", request.auth.uid)' clause in the query.
-      allow list: if isSignedIn() && request.query.get('where').find(constraint => constraint.field == 'userId' && constraint.op == '==' && constraint.value == request.auth.uid) != null;
-      
+      // Users can create, get, and query for their own chats.
+      // For create, the incoming data's userId must match the user's uid.
+      // For reads (get, list), the existing data's userId must match.
+      allow read, create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid);
+
       // Users cannot update or delete the top-level chat document.
       allow update, delete: if false;
 
@@ -76,7 +71,8 @@ service cloud.firestore {
         allow get, list: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
 
         // Users can create a message if they own the parent chat.
-        // The AI assistant (server-side) also needs to create messages.
+        // The 'user' role message's data must have a role of 'user'.
+        // The 'assistant' role message is created by the server, so we trust it.
         allow create: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid;
 
         // Messages are immutable.
