@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
 import { travelPlannerFlow, type TravelPlannerInput } from '@/ai/flows/travel-planner-flow';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 interface Message {
   id: string;
@@ -45,7 +46,6 @@ export function ChatView({ chatId }: ChatViewProps) {
       const getAiResponse = async () => {
         setIsThinking(true);
         try {
-          // Convert Firestore messages to the format expected by the AI flow
           const chatHistory = messages.map(m => ({ role: m.role, content: [{text: m.text}] })) as TravelPlannerInput['history'];
           
           const response = await travelPlannerFlow({ history: chatHistory });
@@ -94,40 +94,42 @@ export function ChatView({ chatId }: ChatViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto w-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {isLoading && <div className="flex justify-center"><Loader /></div>}
-        {messages?.map((message) => (
-          <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-lg p-3 rounded-lg ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-              <p className="whitespace-pre-wrap">{message.text}</p>
+    <div className="flex justify-center items-start p-4 h-[calc(100vh-8rem)]">
+      <Card className="w-full max-w-3xl h-full flex flex-col shadow-lg">
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          {isLoading && <div className="flex justify-center"><Loader /></div>}
+          {messages?.map((message) => (
+            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-lg p-3 rounded-lg ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <p className="whitespace-pre-wrap">{message.text}</p>
+              </div>
             </div>
-          </div>
-        ))}
-         {isThinking && (
-          <div className="flex justify-start">
-             <div className="max-w-lg p-3 rounded-lg bg-muted">
-              <Loader />
-             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="p-4 border-t">
-        <form onSubmit={handleSendMessage} className="flex gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Escribe tu mensaje..."
-            className="flex-1"
-            autoFocus
-            disabled={isThinking}
-          />
-          <Button type="submit" disabled={!newMessage.trim() || isThinking}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
+          ))}
+          {isThinking && (
+            <div className="flex justify-start">
+              <div className="max-w-lg p-3 rounded-lg bg-muted">
+                <Loader />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </CardContent>
+        <CardFooter className="p-4 border-t">
+          <form onSubmit={handleSendMessage} className="flex gap-2 w-full">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Escribe tu mensaje..."
+              className="flex-1"
+              autoFocus
+              disabled={isThinking}
+            />
+            <Button type="submit" disabled={!newMessage.trim() || isThinking}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
