@@ -1,0 +1,50 @@
+/**
+ * @fileoverview Firestore Security Rules for Voaya User Profiles
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model, ensuring that only authenticated users can access and modify their own profile data.
+ *
+ * Data Structure:
+ * All user profile data is nested under the `/users/{userId}/profile` path.
+ *
+ * Key Security Decisions:
+ * - Users can only read and write their own profile data.
+ * - Listing all user profiles is disallowed.
+ *
+ * Denormalization for Authorization:
+ * The `id` field within the UserProfile document is validated against the `userId` in the path to ensure data consistency and enforce ownership. This avoids costly `get()` calls.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Manages user profile data, ensuring that only the authenticated user can access their own profile.
+     * @path /users/{userId}/profile
+     * @allow (create) - Authenticated user with UID 'user123' can create their profile at /users/user123/profile if the 'id' field in the data matches 'user123'.
+     * @allow (get, update, delete) - Authenticated user with UID 'user123' can read/modify/delete their profile at /users/user123/profile.
+     * @deny (create) - Authenticated user with UID 'user456' cannot create a profile at /users/user123/profile.
+     * @deny (get, update, delete) - Authenticated user with UID 'user456' cannot read/modify/delete the profile at /users/user123/profile.
+     * @principle Enforces document ownership for all read and write operations. Validates path-based ownership for data consistency.
+     */
+    match /users/{userId}/profile {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+          return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // Listing user profiles is not permitted.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}
