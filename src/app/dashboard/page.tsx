@@ -1,12 +1,27 @@
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { doc } from 'firebase/firestore';
+
+interface UserProfile {
+    firstName: string;
+    lastName: string;
+    email: string;
+}
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, `users/${user.uid}/profile`);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -14,7 +29,7 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading) {
+  if (isUserLoading || isProfileLoading) {
     return <p>Loading...</p>;
   }
   
@@ -25,7 +40,11 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="mt-4">Welcome, {user.email}</p>
+      {userProfile ? (
+        <p className="mt-4">Welcome, {userProfile.firstName} {userProfile.lastName}</p>
+      ) : (
+         <p className="mt-4">Welcome, {user.email}</p>
+      )}
     </div>
   );
 }
