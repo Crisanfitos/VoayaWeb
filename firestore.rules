@@ -61,7 +61,7 @@ service cloud.firestore {
       allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow list: if isSignedIn() && request.query.where.userId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-
+      
       // Users cannot update or delete the top-level chat document directly.
       allow update, delete: if false;
 
