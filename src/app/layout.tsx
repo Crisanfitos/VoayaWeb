@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'Voaya: Your AI Travel Companion',
@@ -22,9 +23,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-background">
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <FirebaseClientProvider>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

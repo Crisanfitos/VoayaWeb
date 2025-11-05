@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Menu } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,17 +12,27 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Logo } from "../logo";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 const navLinks = [
-  { href: "#", label: "Inicio" },
-  { href: "#about", label: "Sobre Nosotros" },
-  { href: "#services", label: "Servicios" },
-  { href: "#vision", label: "Visión" },
-  { href: "#contact", label: "Contacto" },
+  { href: "/", label: "Inicio" },
+  { href: "/#about", label: "Sobre Nosotros" },
+  { href: "/#services", label: "Servicios" },
+  { href: "/#vision", label: "Visión" },
+  { href: "/#contact", label: "Contacto" },
 ];
 
 export function Navbar() {
   const [hasScrolled, setHasScrolled] = useState(false);
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+
+  const handleSignOut = () => {
+    if (auth) {
+      signOut(auth);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,7 +45,7 @@ export function Navbar() {
   const renderNavLinks = (isMobile: boolean) => (
     <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
       {navLinks.map((link) => {
-        const LinkComponent = isMobile ? SheetClose : React.Fragment;
+        const LinkComponent = isMobile ? SheetClose : 'div';
         const props = isMobile ? { asChild: true } : {};
         
         return (
@@ -51,6 +61,37 @@ export function Navbar() {
     </nav>
   );
 
+  const renderAuthButtons = (isMobile: boolean) => {
+    if (isUserLoading) {
+      return null;
+    }
+
+    if (user) {
+      return (
+        <div className={cn("flex items-center", isMobile ? "flex-col space-y-4 w-full" : "space-x-4")}>
+          <Button asChild variant="ghost">
+             <Link href="/dashboard">Dashboard</Link>
+          </Button>
+          <Button onClick={handleSignOut} variant="outline">
+            <LogOut className="mr-2 h-4 w-4" />
+            Cerrar Sesión
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <div className={cn("flex items-center", isMobile ? "flex-col space-y-4 w-full" : "space-x-2")}>
+        <Button asChild variant="ghost">
+          <Link href="/login">Iniciar Sesión</Link>
+        </Button>
+        <Button asChild className={cn("bg-accent text-accent-foreground hover:bg-accent/90", isMobile && "w-full")}>
+          <Link href="/signup">Registrarse</Link>
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <header
       className={cn(
@@ -59,14 +100,12 @@ export function Navbar() {
       )}
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="#" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2">
           <Logo />
         </Link>
         <div className="hidden md:flex items-center space-x-8">
           {renderNavLinks(false)}
-          <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <Link href="#">Empezar Búsqueda</Link>
-          </Button>
+          {renderAuthButtons(false)}
         </div>
         <div className="md:hidden">
           <Sheet>
@@ -77,15 +116,13 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="right">
               <div className="flex flex-col space-y-8 pt-10">
-                <Link href="#" className="flex items-center space-x-2 self-start">
+                <Link href="/" className="flex items-center space-x-2 self-start">
                    <Logo />
                 </Link>
                 {renderNavLinks(true)}
-                <SheetClose asChild>
-                  <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 w-full">
-                    <Link href="#">Empezar Búsqueda</Link>
-                  </Button>
-                </SheetClose>
+                <div className="border-t border-border pt-6">
+                  {renderAuthButtons(true)}
+                </div>
               </div>
             </SheetContent>
           </Sheet>

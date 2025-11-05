@@ -27,15 +27,6 @@ export function Logo() {
       >
         VOAYA
       </text>
-      <text
-        x="40"
-        y="33"
-        fontFamily="Inter, sans-serif"
-        fontSize="10"
-        className="fill-muted-foreground"
-      >
-        Tu viaje, ya listo.
-      </text>
     </svg>
   );
 }
