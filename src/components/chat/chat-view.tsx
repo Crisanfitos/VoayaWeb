@@ -7,7 +7,8 @@ import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send } from 'lucide-react';
-import { travelPlannerFlow, type TravelPlannerInput } from '@/ai/flows/travel-planner-flow';
+import { travelPlannerFlow } from '@/ai/flows/travel-planner-flow';
+import type { TravelPlannerInput } from '@/ai/flows/travel-planner-flow';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 interface Message {
@@ -35,18 +36,12 @@ export function ChatView({ chatId }: ChatViewProps) {
 
   const { data: messages, isLoading } = useCollection<Message>(messagesQuery);
   
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(scrollToBottom, [messages]);
-  
   useEffect(() => {
     if (messages && messages.length > 0 && messages[messages.length - 1].role === 'user' && !isThinking) {
       const getAiResponse = async () => {
         setIsThinking(true);
         try {
-          const chatHistory = messages.map(m => ({ role: m.role, content: [{text: m.text}] })) as TravelPlannerInput['history'];
+          const chatHistory = messages.map(m => ({ role: m.role as 'user' | 'model', content: [{text: m.text}] })) as TravelPlannerInput['history'];
           
           const response = await travelPlannerFlow({ history: chatHistory });
           
