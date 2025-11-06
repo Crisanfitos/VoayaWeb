@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatSession } from "@google/genai";
-import { ChatMessage as ChatMessageType, TravelBrief } from "@/types";
+import { ChatMessage, TravelBrief } from "@/types";
 import { startChatSession, sendMessageToServer } from "@/services/geminiService";
 import { ChatHeader } from './chat-header';
 import { ChatMessages } from './chat-messages';
@@ -17,29 +17,35 @@ interface ChatViewProps {
 }
 
 const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery }) => {
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [chat, setChat] = useState<ChatSession | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isChatComplete, setIsChatComplete] = useState(false);
   const [internalInitialQuery, setInternalInitialQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = async (messageText: string) => {
-    if (!messageText.trim() || isLoading) return;
+  
 
-    const userMessage: ChatMessageType = { role: 'user', text: messageText };
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading || !chat) return;
+
+    const userMessage: ChatMessage = { role: 'user', text: input };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
     if (!internalInitialQuery) {
-      setInternalInitialQuery(messageText);
+      setInternalInitialQuery(input);
     }
 
     setIsLoading(true);
+    setInput('');
 
     try {
-      const modelMessageText = await sendMessageToServer(newMessages);
-      const modelMessage: ChatMessageType = { role: 'model', text: modelMessageText };
+      const response = await chat.sendMessage({ message: input });
+      const modelMessageText = response.text;
+      const modelMessage: ChatMessage = { role: 'model', text: modelMessageText };
       setMessages([...newMessages, modelMessage]);
 
       if (modelMessageText.includes("ya tengo una base muy sólida para empezar a buscar")) {
@@ -54,14 +60,20 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   };
 
   useEffect(() => {
-    if (initialQuery && messages.length === 0) {
+    const chatSession = startChatSession();
+    setChat(chatSession);
+
+    // Si recibimos el 'initialQuery' de la página principal...
+    if (initialQuery) {
+      setInternalInitialQuery(initialQuery); // Guardamos el 'initialQuery' de la prop en el estado
+      // Enviamos el mensaje inicial
       handleSendMessage(initialQuery);
-    } else if (!initialQuery && messages.length === 0) {
+    } else {
+      // Mensaje de bienvenida estándar
       setMessages([
         { role: 'model', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
       ]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
   const handleSubmit = (e: React.FormEvent) => {
