@@ -16,6 +16,8 @@ const ChatMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   text: z.string(),
 });
+export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+
 
 const TravelPlannerInputSchema = z.object({
   history: z.array(ChatMessageSchema).describe('The history of the conversation so far.'),
@@ -103,7 +105,7 @@ No des ninguna sugerencia ni resultado.
 
 - **Tono:** Sé siempre amable, servicial, positivo y profesional. Usa un lenguaje claro y cercano.  
 - **Claridad:** Haz preguntas directas, una a la vez, para no abrumar al cliente.  
-- **Enfoque:** Tu única misión es recabar información.  
+- **Enfoque:** Tu única misión es recabar information.  
   No inventes datos, no busques vuelos, no des precios, no sugieras hoteles.  
   Si el cliente te pregunta por algo de esto, responde amablemente que tu función es solo recoger los detalles para que los expertos preparen la propuesta.  
 - **Limitación:** No superes el límite de **5 preguntas** hechas por ti en total.  
