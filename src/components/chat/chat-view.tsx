@@ -1,14 +1,15 @@
 
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { ChatSession, Content } from "@google/genai";
+import { ChatSession } from "@google/genai";
 import { ChatMessage, TravelBrief } from "@/types";
 import { startChatSession } from "@/services/geminiService";
+import { sendMessageToServer } from '@/app/actions/chat-actions';
 
 interface ChatViewProps {
   onChatComplete: (brief: TravelBrief) => void;
   error: string | null;
-  initialQuery?: string;
+  initialQuery?: string; // Hacemos que la query inicial sea opcional
 }
 
 const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery }) => {
@@ -17,22 +18,23 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isChatComplete, setIsChatComplete] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [internalInitialQuery, setInternalInitialQuery] = useState('');
 
-  const sendInitialMessage = async (message: string) => {
+  const sendInitialMessage = async (message: string, session: ChatSession) => {
     setIsLoading(true);
     const initialMessage: ChatMessage = { role: 'user', text: message };
     setMessages([initialMessage]);
 
     try {
-      const session = startChatSession([
-          { role: 'user', parts: [{ text: message }] }
-      ]);
-      setChat(session);
-      const result = await session.sendMessage(message);
-      const response = result.response;
-      const modelMessageText = response.text();
+      // Pass the current history to the server action
+      const modelMessageText = await sendMessageToServer(session.history, message);
       const modelMessage: ChatMessage = { role: 'model', text: modelMessageText };
+      
+      // Update session history on the client
+      session.history.push({ role: 'user', parts: [{ text: message }] });
+      session.history.push({ role: 'model', parts: [{ text: modelMessageText }] });
+
       setMessages(prev => [...prev, modelMessage]);
 
       if (modelMessageText.includes("ya tengo una base muy sólida para empezar a buscar")) {
@@ -46,19 +48,25 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     }
   };
 
-
   useEffect(() => {
+    const chatSession = startChatSession();
+    setChat(chatSession);
+
     if (initialQuery) {
       setInternalInitialQuery(initialQuery);
-      sendInitialMessage(initialQuery);
+      sendInitialMessage(initialQuery, chatSession);
     } else {
-      const session = startChatSession([]);
-      setChat(session);
       setMessages([
         { role: 'model', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
       ]);
     }
   }, [initialQuery]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(scrollToBottom, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,11 +84,14 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     setInput('');
 
     try {
-      const result = await chat.sendMessage(input);
-      const response = result.response;
-      const modelMessageText = response.text();
+      const modelMessageText = await sendMessageToServer(chat.history, input);
       const modelMessage: ChatMessage = { role: 'model', text: modelMessageText };
-      setMessages([...newMessages, modelMessage]);
+
+      // Update session history on the client
+      chat.history.push({ role: 'user', parts: [{ text: input }] });
+      chat.history.push({ role: 'model', parts: [{ text: modelMessageText }] });
+      
+      setMessages(prev => [...prev, modelMessage]);
 
       if (modelMessageText.includes("ya tengo una base muy sólida para empezar a buscar")) {
         setIsChatComplete(true);
@@ -101,8 +112,8 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   };
 
   const handleRestart = () => {
-    const session = startChatSession([]);
-    setChat(session);
+    const newSession = startChatSession();
+    setChat(newSession);
     setMessages([
       { role: 'model', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
     ]);
@@ -146,6 +157,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       <div className="p-4 border-t border-[#c4b5a0] bg-[#f5f0e8]">
         {isChatComplete ? (
@@ -184,5 +196,3 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
 };
 
 export default ChatView;
-
-    

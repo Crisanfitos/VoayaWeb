@@ -1,12 +1,12 @@
-'use server';
 
+'use client';
 import { GoogleGenAI, ChatSession, GenerateContentResponse, Content } from "@google/genai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 if (!apiKey) {
-  throw new Error("GEMINI_API_KEY environment variable not set");
+  throw new Error("NEXT_PUBLIC_GEMINI_API_KEY environment variable not set");
 }
 
 const genAI = new GoogleGenAI(apiKey);
@@ -89,57 +89,55 @@ No des ninguna sugerencia ni resultado.
   },
 });
 
-export const startChatSession = (history: Content[]): ChatSession => {
+export const startChatSession = (history: Content[] = []): ChatSession => {
   return model.startChat({ history });
 };
 
-/**
- * Envía los datos de la conversación al webhook de n8n
- * Payload estructurado: { initialQuery, chatHistory: [{role,text}], createdAt }
- * Devuelve la respuesta JSON del webhook si la hay, o null.
- */
+
 export async function sendConversationToWebhook(brief: TravelBrief, webhookUrl = 'https://n8n.voaya.es/webhook-test/40e869f7-f18a-42e5-b16c-1b2e134660b8') {
-  try {
-    // Construir parámetros de consulta con el payload serializado
-    const params = new URLSearchParams();
-    params.append('initialQuery', brief.initialQuery ?? '');
-    params.append('chatHistory', JSON.stringify(brief.chatHistory.map((m: ChatMessage) => ({ role: m.role, text: m.text }))));
-    params.append('createdAt', new Date().toISOString());
+    'use server';
+    try {
+        const params = new URLSearchParams();
+        params.append('initialQuery', brief.initialQuery ?? '');
+        params.append('chatHistory', JSON.stringify(brief.chatHistory.map((m: ChatMessage) => ({ role: m.role, text: m.text }))));
+        params.append('createdAt', new Date().toISOString());
 
-    const url = `${webhookUrl}?${params.toString()}`;
-    const res = await fetch(url, { method: 'GET' });
+        const url = `${webhookUrl}?${params.toString()}`;
+        const res = await fetch(url, { method: 'GET' });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.error('Webhook error', res.status, text);
-      throw new Error(`Webhook responded with status ${res.status}`);
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            console.error('Webhook error', res.status, text);
+            throw new Error(`Webhook responded with status ${res.status}`);
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return await res.json();
+        }
+        return null;
+    } catch (err) {
+        console.error('Error sending conversation to webhook:', err);
+        throw err;
     }
-
-    const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return await res.json();
-    }
-    return null;
-  } catch (err) {
-    console.error('Error sending conversation to webhook:', err);
-    throw err;
-  }
 }
 
 export const generatePlan = async (brief: TravelBrief, userLocation: GeolocationPosition | null): Promise<TravelPlan> => {
-  // Enviar la conversación al webhook al inicio (no debe bloquear la generación del plan)
-  try {
-    await sendConversationToWebhook(brief);
-  } catch (err) {
-    console.warn('sendConversationToWebhook failed:', err);
-  }
+    'use server';
+    try {
+        await sendConversationToWebhook(brief);
+    } catch (err) {
+        console.warn('sendConversationToWebhook failed:', err);
+    }
 
-  const planGenerationModelName = 'gemini-1.5-pro';
-  const planGenerationModel = genAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
+    const planGenerationModelName = 'gemini-1.5-pro';
+    const serverGenAI = new GoogleGenAI(process.env.GEMINI_API_KEY!);
+    const planGenerationModel = serverGenAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
 
-  const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
 
-  const prompt = `
+    const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
+
+    const prompt = `
 Eres "Cerebro IA", un planificador de viajes experto. Tu tarea es crear un itinerario de viaje completo basado en el siguiente resumen del usuario:\n${briefText}\n
 DEBES usar tus herramientas googleSearch y googleMaps para recopilar información actualizada y del mundo real sobre vuelos, puntos de interés y logística.
 
@@ -180,27 +178,27 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
 }
 `;
 
-  try {
-    const result: GenerateContentResponse = await planGenerationModel.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-    if (!jsonMatch || !jsonMatch[1]) {
-      throw new Error("Could not find a valid JSON block in the model's response.");
+    try {
+        const result: GenerateContentResponse = await planGenerationModel.generateContent(prompt);
+        const response = result.response;
+        const text = response.text();
+        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+        if (!jsonMatch || !jsonMatch[1]) {
+            throw new Error("Could not find a valid JSON block in the model's response.");
+        }
+
+        const parsedPlan = JSON.parse(jsonMatch[1]) as Omit<TravelPlan, 'groundingAttribution'>;
+
+        const attributions: GroundingAttribution[] = response.candidates?.[0]?.citationMetadata?.citationSources.map(source => ({
+            uri: source.uri ?? '',
+            title: '' // Title is not directly available in this structure
+        })) || [];
+
+
+        return { ...parsedPlan, groundingAttribution: attributions };
+
+    } catch (error) {
+        console.error("Error generating plan:", error);
+        throw new Error("Failed to generate travel plan from the model.");
     }
-
-    const parsedPlan = JSON.parse(jsonMatch[1]) as Omit<TravelPlan, 'groundingAttribution'>;
-    
-    const attributions: GroundingAttribution[] = response.candidates?.[0]?.citationMetadata?.citationSources.map(source => ({
-        uri: source.uri ?? '',
-        title: '' // Title is not directly available in this structure
-    })) || [];
-
-
-    return { ...parsedPlan, groundingAttribution: attributions };
-
-  } catch (error) {
-    console.error("Error generating plan:", error);
-    throw new Error("Failed to generate travel plan from the model.");
-  }
 };
