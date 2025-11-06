@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, ChatSession, GenerateContentResult } from "@google/generative-ai";
+import { GoogleGenerativeAI, ChatSession, GenerateContentResult, Chat } from "@google/genai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -102,13 +102,13 @@ export async function sendConversationToWebhook(brief: TravelBrief, webhookUrl =
     params.append('chatHistory', JSON.stringify(brief.chatHistory.map((m: ChatMessage) => ({ role: m.role, text: m.text }))));
     params.append('createdAt', new Date().toISOString());
 
-    const url = `\${webhookUrl}?\${params.toString()}`;
+    const url = `${webhookUrl}?${params.toString()}`;
     const res = await fetch(url, { method: 'GET' });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('Webhook error', res.status, text);
-      throw new Error(`Webhook responded with status \${res.status}`);
+      throw new Error(`Webhook responded with status ${res.status}`);
     }
 
     const contentType = res.headers.get('content-type') || '';
@@ -133,10 +133,10 @@ export const generatePlan = async (brief: TravelBrief, userLocation: Geolocation
   const planGenerationModelName = 'gemini-1.5-pro'; // NOTE: Corrected model name if needed
   const planGenerationModel = genAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
 
-  const briefText = `Idea inicial: "\${brief.initialQuery}".\n\nHistorial de la conversación:\n\${brief.chatHistory.map(m => `\${m.role}: \${m.text}`).join('\n')}`;
+  const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
 
   const prompt = `
-Eres "Cerebro IA", un planificador de viajes experto. Tu tarea es crear un itinerario de viaje completo basado en el siguiente resumen del usuario:\n\${briefText}\n
+Eres "Cerebro IA", un planificador de viajes experto. Tu tarea es crear un itinerario de viaje completo basado en el siguiente resumen del usuario:\n${briefText}\n
 DEBES usar tus herramientas googleSearch y googleMaps para recopilar información actualizada y del mundo real sobre vuelos, puntos de interés y logística.
 
 Sigue estos pasos:
