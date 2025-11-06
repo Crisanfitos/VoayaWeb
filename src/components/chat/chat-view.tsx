@@ -1,41 +1,39 @@
 
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-// 1. CORRECCIÓN: Volvemos a 'ChatSession'
-import { ChatSession } from "@google/genai";
-// 2. CORRECCIÓN: Volver a rutas relativas
+import { ChatSession, Content } from "@google/genai";
 import { ChatMessage, TravelBrief } from "@/types";
 import { startChatSession } from "@/services/geminiService";
 
 interface ChatViewProps {
   onChatComplete: (brief: TravelBrief) => void;
   error: string | null;
-  initialQuery?: string; // Hacemos que la query inicial sea opcional
+  initialQuery?: string;
 }
 
 const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery }) => {
-  // 2. CORRECCIÓN: El estado es de tipo 'ChatSession'
   const [chat, setChat] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isChatComplete, setIsChatComplete] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Añadimos el estado 'initialQuery' que tu función 'handleSubmit' original usaba
   const [internalInitialQuery, setInternalInitialQuery] = useState('');
 
-  const sendInitialMessage = async (message: string, session: ChatSession) => {
+  const sendInitialMessage = async (message: string) => {
     setIsLoading(true);
     const initialMessage: ChatMessage = { role: 'user', text: message };
     setMessages([initialMessage]);
 
     try {
+      const session = startChatSession([
+          { role: 'user', parts: [{ text: message }] }
+      ]);
+      setChat(session);
       const result = await session.sendMessage(message);
       const response = result.response;
       const modelMessageText = response.text();
       const modelMessage: ChatMessage = { role: 'model', text: modelMessageText };
-      setMessages([initialMessage, modelMessage]);
+      setMessages(prev => [...prev, modelMessage]);
 
       if (modelMessageText.includes("ya tengo una base muy sólida para empezar a buscar")) {
         setIsChatComplete(true);
@@ -50,27 +48,17 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
 
 
   useEffect(() => {
-    const chatSession = startChatSession();
-    setChat(chatSession);
-
-    // Si recibimos el 'initialQuery' de la página principal...
     if (initialQuery) {
-      setInternalInitialQuery(initialQuery); // Guardamos el 'initialQuery' de la prop en el estado
-      // Enviamos el mensaje inicial
-      sendInitialMessage(initialQuery, chatSession);
+      setInternalInitialQuery(initialQuery);
+      sendInitialMessage(initialQuery);
     } else {
-      // Mensaje de bienvenida estándar
+      const session = startChatSession([]);
+      setChat(session);
       setMessages([
         { role: 'model', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
       ]);
     }
-  }, [initialQuery]); // Se ejecuta solo si 'initialQuery' (de la prop) cambia
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(scrollToBottom, [messages]);
+  }, [initialQuery]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +94,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   };
 
   const handleConfirm = () => {
-    // Usamos 'internalInitialQuery' que ahora se guarda correctamente
     onChatComplete({
       initialQuery: internalInitialQuery || messages.find(m => m.role === 'user')?.text || '',
       chatHistory: messages
@@ -114,15 +101,15 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   };
 
   const handleRestart = () => {
-    const chatSession = startChatSession();
-    setChat(chatSession);
+    const session = startChatSession([]);
+    setChat(session);
     setMessages([
       { role: 'model', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
     ]);
     setInput('');
     setIsLoading(false);
     setIsChatComplete(false);
-    setInternalInitialQuery(''); // Reseteamos el query interno
+    setInternalInitialQuery('');
   };
 
   return (
@@ -159,7 +146,6 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
       <div className="p-4 border-t border-[#c4b5a0] bg-[#f5f0e8]">
         {isChatComplete ? (

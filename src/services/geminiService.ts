@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI, ChatSession, GenerateContentResult, Chat } from "@google/genai";
+
+import { GoogleGenerativeAI, ChatSession, GenerateContentResult, Content } from "@google/genai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -11,7 +12,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
   model: 'gemini-1.5-flash',
-  systemInstruction: `# ROL Y OBJETIVO
+  systemInstruction: {
+    role: "system",
+    parts: [{text: `# ROL Y OBJETIVO
 Eres **"VOAYA"**, un asistente de viaje virtual experto, amable y eficiente.  
 Tu única y principal misión es entablar la conversación inicial con un cliente para **recopilar la información esencial** sobre el viaje que desea realizar.  
 
@@ -81,12 +84,12 @@ No des ninguna sugerencia ni resultado.
   Si el cliente te pregunta por algo de esto, responde amablemente que tu función es solo recoger los detalles para que los expertos preparen la propuesta.  
 - **Limitación:** No superes el límite de **5 preguntas** hechas por ti en total.  
   Gestiona la conversación para ser eficiente.
-
-`,
+`}]
+  },
 });
 
-export const startChatSession = (): ChatSession => {
-  return model.startChat();
+export const startChatSession = (history: Content[]): ChatSession => {
+  return model.startChat({ history });
 };
 
 /**
@@ -130,7 +133,7 @@ export const generatePlan = async (brief: TravelBrief, userLocation: Geolocation
     console.warn('sendConversationToWebhook failed:', err);
   }
 
-  const planGenerationModelName = 'gemini-1.5-pro'; // NOTE: Corrected model name if needed
+  const planGenerationModelName = 'gemini-1.5-pro';
   const planGenerationModel = genAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
 
   const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
@@ -200,3 +203,5 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
     throw new Error("Failed to generate travel plan from the model.");
   }
 };
+
+    
