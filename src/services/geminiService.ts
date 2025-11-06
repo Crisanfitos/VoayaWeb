@@ -101,6 +101,9 @@ export const sendMessageToServer = (): Chat => {
   return chatModel;
 };
 
+export const startChatSession = (): Chat => {
+  return chatModel;
+};
 
 export const generatePlan = async (brief: TravelBrief, userLocation: GeolocationPosition | null): Promise<TravelPlan> => {
   // Enviar la conversación al webhook al inicio (no debe bloquear la generación del plan)
