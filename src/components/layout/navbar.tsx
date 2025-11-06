@@ -8,6 +8,8 @@ import { Menu, LogOut } from "lucide-react";
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
@@ -119,6 +121,9 @@ export function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle className="sr-only">Menú de Navegación</SheetTitle>
+              </SheetHeader>
               <div className="flex flex-col space-y-8 pt-10">
                 <Link href="/" className="flex items-center space-x-2 self-start">
                    <Logo />
