@@ -1,36 +1,38 @@
 'use client';
 
-import { useUser, useFirestore, useAuth, addDocumentNonBlocking } from '@/firebase';
+import { useUser } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo, Suspense } from 'react';
-import { doc, collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { Loader } from '@/components/ui/loader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Plane, Hotel, Mountain } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChatView } from '@/components/chat/chat-view';
+import ChatView from '@/components/chat/chat-view';
+import { TravelPlan } from '@/types';
+import { generatePlan } from '@/services/geminiService';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
 function PlanPageComponent() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
   const searchParams = useSearchParams();
 
-  // State for the initial planning form
   const [tripDescription, setTripDescription] = useState('');
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights']));
   
-  // State for the chat view
-  const [chatId, setChatId] = useState<string | null>(null);
+  // State for the view
+  const [currentView, setCurrentView] = useState<'form' | 'chat' | 'plan'>('form');
+  const [travelPlan, setTravelPlan] = useState<TravelPlan | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   useEffect(() => {
     const chatIdFromUrl = searchParams.get('chatId');
     if (chatIdFromUrl) {
-      setChatId(chatIdFromUrl);
+      // This logic can be adapted if we still want to link to old chats
+      // For now, starting fresh is the main flow.
     }
   }, [searchParams]);
 
@@ -69,44 +71,23 @@ function PlanPageComponent() {
     return placeholders[sortedCategories] || placeholders['flights,hotels,experiences'];
   }, [selectedCategories]);
 
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tripDescription || !firestore || !user) return;
-
+    if (!tripDescription) return;
     setIsStartingChat(true);
+    setCurrentView('chat');
+  };
 
-    // 1. Create a new chat document in Firestore
-    const chatCollectionRef = collection(firestore, 'chats');
-    const chatData = {
-      userId: user.uid,
-      createdAt: serverTimestamp(),
-      title: tripDescription.substring(0, 40) + '...', // Use first part of message as title
-    };
-    
-    // Use the non-blocking function and get the promise for the new doc
-    const newChatDocPromise = addDocumentNonBlocking(chatCollectionRef, chatData);
-
-    // Continue immediately
-    const newChatDoc = await newChatDocPromise; // This will resolve with the new DocumentReference
-
-    if (newChatDoc) {
-      // 2. Add the first message to the 'messages' subcollection
-      const messagesCollectionRef = collection(firestore, 'chats', newChatDoc.id, 'messages');
-      const messageData = {
-        text: tripDescription,
-        role: 'user',
-        createdAt: serverTimestamp(),
-      };
-      addDocumentNonBlocking(messagesCollectionRef, messageData);
-      
-      // 3. Set the chatId to switch to the chat view, and update URL
-      router.push(`/plan?chatId=${newChatDoc.id}`);
-      setChatId(newChatDoc.id);
+  const handleChatComplete = async (brief: { initialQuery: string; chatHistory: any[] }) => {
+    setCurrentView('plan');
+    try {
+        const plan = await generatePlan(brief, null); // userLocation is null for now
+        setTravelPlan(plan);
+    } catch (e) {
+        console.error(e);
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the plan.";
+        setPlanError(errorMessage);
     }
-    
-    // We don't need a `catch` or `finally` block because errors are handled globally
-    setIsStartingChat(false);
   };
 
   if (isUserLoading) {
@@ -117,14 +98,31 @@ function PlanPageComponent() {
     );
   }
 
-  if (!user || !firestore) {
+  if (!user) {
     return null;
   }
 
-  if (chatId) {
-    return <ChatView chatId={chatId} />;
+  if (currentView === 'chat') {
+    return <ChatView onChatComplete={handleChatComplete} error={null} initialQuery={tripDescription} />;
   }
 
+  if(currentView === 'plan') {
+    if (planError) {
+        return <div className="text-center py-10"><h2 className="text-destructive">Error generating plan</h2><p>{planError}</p></div>;
+    }
+    if (!travelPlan) {
+        return <div className="flex min-h-screen items-center justify-center"><Loader /> <p className="ml-4">Generating your travel plan...</p></div>;
+    }
+    // A simple display for the travel plan. This can be expanded into its own component.
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <h1 className="text-3xl font-bold">Your Travel Plan to {travelPlan.summary.destination}</h1>
+            <pre className="mt-4 p-4 bg-muted rounded-lg whitespace-pre-wrap">{JSON.stringify(travelPlan, null, 2)}</pre>
+        </div>
+    )
+  }
+
+  // Initial Form View
   const searchOptions = [
     { id: 'flights', label: 'Vuelos', icon: <Plane className="mr-2 h-4 w-4" /> },
     { id: 'hotels', label: 'Hoteles', icon: <Hotel className="mr-2 h-4 w-4" /> },

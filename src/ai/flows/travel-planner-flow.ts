@@ -13,11 +13,9 @@ import { z } from 'zod';
 
 // Define the schema for a single message in the chat history
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  text: z.string(),
+  role: z.enum(['user', 'model', 'tool', 'system', 'assistant']),
+  content: z.array(z.object({ text: z.string() })),
 });
-export type ChatMessage = z.infer<typeof ChatMessageSchema>;
-
 
 const TravelPlannerInputSchema = z.object({
   history: z.array(ChatMessageSchema).describe('The history of the conversation so far.'),
@@ -40,6 +38,9 @@ const travelPlannerAIFlow = ai.defineFlow(
     outputSchema: TravelPlannerOutputSchema,
   },
   async (input) => {
+    console.log("DEBUG: Inicia travelPlannerAIFlow.");
+    console.log("DEBUG: Historial de entrada (input.history):", JSON.stringify(input.history, null, 2));
+
     const systemPrompt = `# ROL Y OBJETIVO
 Eres **"VOAYA"**, un asistente de viaje virtual experto, amable y eficiente.  
 Tu única y principal misión es entablar la conversación inicial con un cliente para **recopilar la información esencial** sobre el viaje que desea realizar.  
@@ -114,23 +115,32 @@ No des ninguna sugerencia ni resultado.
 
     // The 'assistant' role in Firestore needs to be mapped to 'model' for the AI
     const mappedHistory = input.history.map(message => ({
-      role: message.role === 'assistant' ? 'model' : 'user',
-      content: [{ text: message.text }],
+      role: message.role === 'assistant' ? 'model' : message.role,
+      content: message.content, 
     }));
+    console.log("DEBUG: Historial transformado (mappedHistory):", JSON.stringify(mappedHistory, null, 2));
 
 
-    const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: mappedHistory,
-      output: {
-        schema: TravelPlannerOutputSchema,
-      },
-      config: {
-        temperature: 0.7,
-      },
-      system: systemPrompt,
-    });
+    try {
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash',
+        prompt: mappedHistory,
+        output: {
+          schema: TravelPlannerOutputSchema,
+        },
+        config: {
+          temperature: 0.7,
+          systemInstruction: systemPrompt,
+        },
+      });
 
-    return output!;
+      console.log("DEBUG: Respuesta de la IA (output):", JSON.stringify(output, null, 2));
+      return output!;
+
+    } catch (error) {
+      console.error("DEBUG: Error durante ai.generate:", error);
+      // Re-lanzamos el error para que el cliente sepa que algo ha ido mal
+      throw error;
+    }
   }
 );
