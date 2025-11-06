@@ -121,7 +121,6 @@ export function ChatView({ chatId }: ChatViewProps) {
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Escribe tu mensaje..."
               className="flex-1"
-              autoFocus
               disabled={isThinking}
             />
             <Button type="submit" disabled={!newMessage.trim() || isThinking}>

@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 // Define the schema for a single message in the chat history
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model', 'tool', 'system']),
+  role: z.enum(['user', 'model', 'tool', 'system', 'assistant']),
   content: z.array(z.object({ text: z.string() })),
 });
 
@@ -113,22 +113,20 @@ No des ninguna sugerencia ni resultado.
 
     // The 'assistant' role in Firestore needs to be mapped to 'model' for the AI
     const mappedHistory = input.history.map(message => ({
-      ...message,
       role: message.role === 'assistant' ? 'model' : message.role,
+      content: message.content, // Ensure content remains in the format [{ text: "..." }]
     }));
 
 
     const { output } = await ai.generate({
-      model: 'googleai/gemini-2.5-flash',
-      prompt: {
-        system: systemPrompt,
-        messages: mappedHistory,
-      },
+      model: 'googleai/gemini-1.5-flash',
+      prompt: mappedHistory,
       output: {
         schema: TravelPlannerOutputSchema,
       },
       config: {
         temperature: 0.7,
+        systemInstruction: systemPrompt,
       },
     });
 
