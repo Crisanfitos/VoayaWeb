@@ -1,4 +1,3 @@
-
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
@@ -10,8 +9,8 @@ export interface TravelBrief {
 }
 
 export interface GroundingAttribution {
-    uri: string;
-    title: string;
+  uri: string;
+  title: string;
 }
 
 export interface TravelPlan {
@@ -19,6 +18,7 @@ export interface TravelPlan {
     destination: string;
     dates: string;
     travelers: string;
+
     style: string;
   };
   flights: {

@@ -10,7 +10,7 @@ import { Search, Plane, Hotel, Mountain } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ChatView from '@/components/chat/chat-view';
 import { TravelPlan } from '@/types';
-import { generatePlan } from '@/services/geminiService';
+import { generatePlan } from '@/app/actions/chat-actions';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 

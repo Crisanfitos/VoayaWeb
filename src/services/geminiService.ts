@@ -1,21 +1,15 @@
+'use server';
+import { GoogleGenAI, GenerateContentResponse, Content } from "@google/genai";
+import { ChatMessage, TravelBrief, TravelPlan, GroundingAttribution } from '@/types';
 
-'use client';
-import { GoogleGenAI, ChatSession, GenerateContentResponse, Content } from "@google/genai";
-import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
-
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-
-if (!apiKey) {
-  throw new Error("NEXT_PUBLIC_GEMINI_API_KEY environment variable not set");
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("API_KEY environment variable not set");
 }
 
-const genAI = new GoogleGenAI(apiKey);
-
-const model = genAI.getGenerativeModel({
+const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+const chatModel = genAI.getGenerativeModel({
   model: 'gemini-1.5-flash',
-  systemInstruction: {
-    role: "system",
-    parts: [{text: `# ROL Y OBJETIVO
+  systemInstruction: `# ROL Y OBJETIVO
 Eres **"VOAYA"**, un asistente de viaje virtual experto, amable y eficiente.  
 Tu única y principal misión es entablar la conversación inicial con un cliente para **recopilar la información esencial** sobre el viaje que desea realizar.  
 
@@ -85,59 +79,72 @@ No des ninguna sugerencia ni resultado.
   Si el cliente te pregunta por algo de esto, responde amablemente que tu función es solo recoger los detalles para que los expertos preparen la propuesta.  
 - **Limitación:** No superes el límite de **5 preguntas** hechas por ti en total.  
   Gestiona la conversación para ser eficiente.
-`}]
-  },
+
+`,
 });
 
-export const startChatSession = (history: Content[] = []): ChatSession => {
-  return model.startChat({ history });
-};
+
+export const sendMessageToServer = async (history: ChatMessage[]): Promise<string> => {
+    const chat = chatModel.startChat({
+        history: history.slice(0, -1).map(msg => ({ // Send all but the last message as history
+            role: msg.role,
+            parts: [{ text: msg.text }]
+        }))
+    });
+    const lastMessage = history[history.length - 1];
+    const result = await chat.sendMessage(lastMessage.text);
+    return result.response.text();
+}
 
 
+/**
+ * Envía los datos de la conversación al webhook de n8n
+ * Payload estructurado: { initialQuery, chatHistory: [{role,text}], createdAt }
+ * Devuelve la respuesta JSON del webhook si la hay, o null.
+ */
 export async function sendConversationToWebhook(brief: TravelBrief, webhookUrl = 'https://n8n.voaya.es/webhook-test/40e869f7-f18a-42e5-b16c-1b2e134660b8') {
-    'use server';
-    try {
-        const params = new URLSearchParams();
-        params.append('initialQuery', brief.initialQuery ?? '');
-        params.append('chatHistory', JSON.stringify(brief.chatHistory.map((m: ChatMessage) => ({ role: m.role, text: m.text }))));
-        params.append('createdAt', new Date().toISOString());
+  try {
+    // Construir parámetros de consulta con el payload serializado
+    const params = new URLSearchParams();
+    params.append('initialQuery', brief.initialQuery ?? '');
+    params.append('chatHistory', JSON.stringify(brief.chatHistory.map((m: ChatMessage) => ({ role: m.role, text: m.text }))));
+    params.append('createdAt', new Date().toISOString());
 
-        const url = `${webhookUrl}?${params.toString()}`;
-        const res = await fetch(url, { method: 'GET' });
+    const url = `${webhookUrl}?${params.toString()}`;
+    const res = await fetch(url, { method: 'GET' });
 
-        if (!res.ok) {
-            const text = await res.text().catch(() => '');
-            console.error('Webhook error', res.status, text);
-            throw new Error(`Webhook responded with status ${res.status}`);
-        }
-
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-            return await res.json();
-        }
-        return null;
-    } catch (err) {
-        console.error('Error sending conversation to webhook:', err);
-        throw err;
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('Webhook error', res.status, text);
+      throw new Error(`Webhook responded with status ${res.status}`);
     }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+    return null;
+  } catch (err) {
+    console.error('Error sending conversation to webhook:', err);
+    throw err;
+  }
 }
 
 export const generatePlan = async (brief: TravelBrief, userLocation: GeolocationPosition | null): Promise<TravelPlan> => {
-    'use server';
-    try {
-        await sendConversationToWebhook(brief);
-    } catch (err) {
-        console.warn('sendConversationToWebhook failed:', err);
-    }
+  // Enviar la conversación al webhook al inicio (no debe bloquear la generación del plan)
+  try {
+    await sendConversationToWebhook(brief);
+  } catch (err) {
+    console.warn('sendConversationToWebhook failed:', err);
+  }
 
-    const planGenerationModelName = 'gemini-1.5-pro';
-    const serverGenAI = new GoogleGenAI(process.env.GEMINI_API_KEY!);
-    const planGenerationModel = serverGenAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
+  const planGenerationModelName = 'gemini-1.5-pro';
+  const serverGenAI = new GoogleGenAI(process.env.GEMINI_API_KEY!);
+  const planGenerationModel = serverGenAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
 
+  const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
 
-    const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
-
-    const prompt = `
+  const prompt = `
 Eres "Cerebro IA", un planificador de viajes experto. Tu tarea es crear un itinerario de viaje completo basado en el siguiente resumen del usuario:\n${briefText}\n
 DEBES usar tus herramientas googleSearch y googleMaps para recopilar información actualizada y del mundo real sobre vuelos, puntos de interés y logística.
 
@@ -178,7 +185,7 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
 }
 `;
 
-    try {
+  try {
         const result: GenerateContentResponse = await planGenerationModel.generateContent(prompt);
         const response = result.response;
         const text = response.text();
