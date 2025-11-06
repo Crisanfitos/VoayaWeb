@@ -1,11 +1,12 @@
+'use server';
 
 import { GoogleGenAI, ChatSession, GenerateContentResponse, Content } from "@google/genai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  throw new Error("API_KEY environment variable not set");
+  throw new Error("GEMINI_API_KEY environment variable not set");
 }
 
 const genAI = new GoogleGenAI(apiKey);
@@ -203,5 +204,3 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
     throw new Error("Failed to generate travel plan from the model.");
   }
 };
-
-    
