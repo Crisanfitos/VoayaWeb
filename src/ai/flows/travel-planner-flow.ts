@@ -13,8 +13,8 @@ import { z } from 'zod';
 
 // Define the schema for a single message in the chat history
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model', 'tool', 'system', 'assistant']),
-  content: z.array(z.object({ text: z.string() })),
+  role: z.enum(['user', 'assistant']),
+  text: z.string(),
 });
 
 const TravelPlannerInputSchema = z.object({
@@ -38,7 +38,6 @@ const travelPlannerAIFlow = ai.defineFlow(
     outputSchema: TravelPlannerOutputSchema,
   },
   async (input) => {
-
     const systemPrompt = `# ROL Y OBJETIVO
 Eres **"VOAYA"**, un asistente de viaje virtual experto, amable y eficiente.  
 Tu única y principal misión es entablar la conversación inicial con un cliente para **recopilar la información esencial** sobre el viaje que desea realizar.  
@@ -113,8 +112,8 @@ No des ninguna sugerencia ni resultado.
 
     // The 'assistant' role in Firestore needs to be mapped to 'model' for the AI
     const mappedHistory = input.history.map(message => ({
-      role: message.role === 'assistant' ? 'model' : message.role,
-      content: message.content, // Ensure content remains in the format [{ text: "..." }]
+      role: message.role === 'assistant' ? 'model' : 'user',
+      content: [{ text: message.text }],
     }));
 
 
@@ -126,8 +125,8 @@ No des ninguna sugerencia ni resultado.
       },
       config: {
         temperature: 0.7,
-        systemInstruction: systemPrompt,
       },
+      systemInstruction: systemPrompt,
     });
 
     return output!;

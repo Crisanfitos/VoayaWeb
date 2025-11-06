@@ -27,7 +27,6 @@ export function ChatView({ chatId }: ChatViewProps) {
   const firestore = useFirestore();
   const [newMessage, setNewMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -41,7 +40,7 @@ export function ChatView({ chatId }: ChatViewProps) {
       const getAiResponse = async () => {
         setIsThinking(true);
         try {
-          const chatHistory = messages.map(m => ({ role: m.role as 'user' | 'model', content: [{text: m.text}] })) as TravelPlannerInput['history'];
+          const chatHistory = messages.map(m => ({ role: m.role, text: m.text })) as TravelPlannerInput['history'];
           
           const response = await travelPlannerFlow({ history: chatHistory });
           
@@ -107,7 +106,6 @@ export function ChatView({ chatId }: ChatViewProps) {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </CardContent>
         <CardFooter className="p-4 border-t">
           <form onSubmit={handleSendMessage} className="flex gap-2 w-full">
