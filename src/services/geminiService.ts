@@ -1,5 +1,5 @@
 
-import { GoogleGenerativeAI, ChatSession, GenerateContentResult, Content } from "@google/genai";
+import { GoogleGenAI, ChatSession, GenerateContentResponse, Content } from "@google/genai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '../types';
 
 const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -8,7 +8,7 @@ if (!apiKey) {
   throw new Error("API_KEY environment variable not set");
 }
 
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenAI(apiKey);
 
 const model = genAI.getGenerativeModel({
   model: 'gemini-1.5-flash',
@@ -180,7 +180,7 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
 `;
 
   try {
-    const result: GenerateContentResult = await planGenerationModel.generateContent(prompt);
+    const result: GenerateContentResponse = await planGenerationModel.generateContent(prompt);
     const response = result.response;
     const text = response.text();
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
