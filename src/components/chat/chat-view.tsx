@@ -138,11 +138,11 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
       )}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((msg, index) => (
-          <div key={index} className={\`flex items-end gap-3 \${msg.role === 'user' ? 'justify-end' : 'justify-start'}\`}>
+          <div key={index} className={`flex items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'model' && (
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c89550] flex items-center justify-center text-[#f5f0e8] font-bold text-lg flex-shrink-0">V</div>
             )}
-            <div className={\`max-w-md lg:max-w-lg p-4 rounded-2xl \${msg.role === 'user' ? 'bg-[#c89550] text-[#f5f0e8] rounded-br-none' : 'bg-[#f5f0e8] text-[#3d3d3d] border border-[#c4b5a0] rounded-bl-none'}\`}>
+            <div className={`max-w-md lg:max-w-lg p-4 rounded-2xl ${msg.role === 'user' ? 'bg-[#c89550] text-[#f5f0e8] rounded-br-none' : 'bg-[#f5f0e8] text-[#3d3d3d] border border-[#c4b5a0] rounded-bl-none'}`}>
               <p className="whitespace-pre-wrap">{msg.text}</p>
             </div>
           </div>
@@ -198,3 +198,5 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
 };
 
 export default ChatView;
+
+    
