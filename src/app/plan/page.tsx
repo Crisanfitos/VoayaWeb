@@ -22,7 +22,7 @@ function PlanPageComponent() {
   const [tripDescription, setTripDescription] = useState('');
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights']));
-  
+
   // State for the view
   const [currentView, setCurrentView] = useState<'form' | 'chat' | 'plan'>('form');
   const [travelPlan, setTravelPlan] = useState<TravelPlan | null>(null);
@@ -65,7 +65,7 @@ function PlanPageComponent() {
     'hotels,experiences': "'Hotel boutique en Kioto y una clase de ceremonia del té'",
     'flights,hotels,experiences': "'Un viaje completo a Japón para 3 personas en verano'",
   };
-  
+
   const placeholderKey = useMemo(() => {
     const sortedCategories = Array.from(selectedCategories).sort().join(',');
     return placeholders[sortedCategories] || placeholders['flights,hotels,experiences'];
@@ -81,12 +81,12 @@ function PlanPageComponent() {
   const handleChatComplete = async (brief: { initialQuery: string; chatHistory: any[] }) => {
     setCurrentView('plan');
     try {
-        const plan = await generatePlan(brief, null); // userLocation is null for now
-        setTravelPlan(plan);
+      const plan = await generatePlan(brief, null); // userLocation is null for now
+      setTravelPlan(plan);
     } catch (e) {
-        console.error(e);
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the plan.";
-        setPlanError(errorMessage);
+      console.error(e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred while generating the plan.";
+      setPlanError(errorMessage);
     }
   };
 
@@ -103,22 +103,31 @@ function PlanPageComponent() {
   }
 
   if (currentView === 'chat') {
-    return <ChatView onChatComplete={handleChatComplete} error={null} initialQuery={tripDescription} />;
+    return (
+      <div className="py-8 md:py-12 min-h-screen bg-gray-50/50">
+        <ChatView
+          onChatComplete={handleChatComplete}
+          error={null}
+          initialQuery={tripDescription}
+          selectedCategories={selectedCategories}
+        />
+      </div>
+    );
   }
 
-  if(currentView === 'plan') {
+  if (currentView === 'plan') {
     if (planError) {
-        return <div className="text-center py-10"><h2 className="text-destructive">Error generating plan</h2><p>{planError}</p></div>;
+      return <div className="text-center py-10"><h2 className="text-destructive">Error generating plan</h2><p>{planError}</p></div>;
     }
     if (!travelPlan) {
-        return <div className="flex min-h-screen items-center justify-center"><Loader /> <p className="ml-4">Generating your travel plan...</p></div>;
+      return <div className="flex min-h-screen items-center justify-center"><Loader /> <p className="ml-4">Generating your travel plan...</p></div>;
     }
     // A simple display for the travel plan. This can be expanded into its own component.
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold">Your Travel Plan to {travelPlan.summary.destination}</h1>
-            <pre className="mt-4 p-4 bg-muted rounded-lg whitespace-pre-wrap">{JSON.stringify(travelPlan, null, 2)}</pre>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold">Your Travel Plan to {travelPlan.summary.destination}</h1>
+        <pre className="mt-4 p-4 bg-muted rounded-lg whitespace-pre-wrap">{JSON.stringify(travelPlan, null, 2)}</pre>
+      </div>
     )
   }
 
@@ -135,7 +144,7 @@ function PlanPageComponent() {
         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
           ¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo.
         </h1>
-        
+
         <div className="flex justify-center gap-2 mb-6">
           {searchOptions.map((option) => (
             <Button
@@ -162,20 +171,20 @@ function PlanPageComponent() {
                 transition={{ duration: 0.2 }}
                 className="w-full"
               >
-                 <Input
-                    type="text"
-                    value={tripDescription}
-                    onChange={(e) => setTripDescription(e.target.value)}
-                    placeholder={placeholderKey}
-                    className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-muted-foreground"
-                    autoFocus
-                  />
+                <Input
+                  type="text"
+                  value={tripDescription}
+                  onChange={(e) => setTripDescription(e.target.value)}
+                  placeholder={placeholderKey}
+                  className="relative h-14 pl-12 pr-4 text-base rounded-full shadow-lg bg-card border-transparent focus:ring-2 focus:ring-ring transition-transform duration-300 ease-in-out hover:scale-[1.02] placeholder:text-muted-foreground"
+                  autoFocus
+                />
               </motion.div>
             </AnimatePresence>
           </div>
-          <Button 
-            type="submit" 
-            size="lg" 
+          <Button
+            type="submit"
+            size="lg"
             className="h-12 px-10 rounded-full bg-accent text-accent-foreground hover:bg-accent/90 transition-transform duration-300 ease-in-out disabled:scale-100 enabled:hover:scale-105"
             disabled={isStartingChat || !tripDescription}
           >
