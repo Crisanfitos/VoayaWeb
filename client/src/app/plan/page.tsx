@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Search, Plane, Hotel, Mountain } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ChatView from '@/components/chat/chat-view';
-import { TravelPlan } from '@/types';
+import { TravelPlan, TravelBrief } from '@/types';
 import { generatePlan } from '@/app/actions/chat-actions';
+import { processAndSendData } from '@/app/actions';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
@@ -22,6 +23,7 @@ function PlanPageComponent() {
   const [tripDescription, setTripDescription] = useState('');
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights']));
+  const [isSendingToWebhook, setIsSendingToWebhook] = useState(false);
 
   // State for the view
   const [currentView, setCurrentView] = useState<'form' | 'chat' | 'plan'>('form');
@@ -78,10 +80,31 @@ function PlanPageComponent() {
     setCurrentView('chat');
   };
 
-  const handleChatComplete = async (brief: { initialQuery: string; chatHistory: any[] }) => {
+  const handleChatComplete = async (brief: TravelBrief) => {
+    // Si la única categoría es "flights", llamamos directamente al webhook.
+    if (selectedCategories.size === 1 && selectedCategories.has('flights')) {
+      setIsSendingToWebhook(true);
+      setPlanError(null);
+
+      const result = await processAndSendData(brief.chatHistory, 'flights');
+
+      if (result.success) {
+        // Aquí podrías mostrar un mensaje de éxito o redirigir al usuario.
+        // Por ahora, lo mostraremos en un alert y resetearemos el formulario.
+        alert(result.message);
+        setTripDescription('');
+        setCurrentView('form');
+      } else {
+        setPlanError(result.message);
+      }
+      setIsSendingToWebhook(false);
+      return;
+    }
+
+    // Para cualquier otra combinación de categorías, usamos el flujo de generación de plan.
     setCurrentView('plan');
     try {
-      const plan = await generatePlan(brief, null); // userLocation is null for now
+      const plan = await generatePlan(brief, null); // userLocation is null for ahora
       setTravelPlan(plan);
     } catch (e) {
       console.error(e);
@@ -90,10 +113,11 @@ function PlanPageComponent() {
     }
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isSendingToWebhook) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader />
+        {isSendingToWebhook && <p className="ml-4">Enviando tu solicitud de vuelo...</p>}
       </div>
     );
   }

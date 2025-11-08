@@ -1,0 +1,44 @@
+nohup: ignoring input
+
+> @voaya/server@1.0.0 dev
+> nodemon src/index.ts
+
+[33m[nodemon] 3.1.10[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/index.ts`[39m
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: EBADF: bad file descriptor, read
+Emitted 'error' event on ReadStream instance at:
+    at emitErrorNT (node:internal/streams/destroy:169:8)
+    at errorOrDestroy (node:internal/streams/destroy:238:7)
+    at node:internal/fs/streams:272:9
+    at FSReqCallback.wrapper [as oncomplete] (node:fs:682:5) {
+  errno: -9,
+  code: 'EBADF',
+  syscall: 'read'
+}
+
+Node.js v20.18.1
+npm ERR! Lifecycle script `dev` failed with error: 
+npm ERR! Error: command failed 
+npm ERR!   in workspace: @voaya/server@1.0.0 
+npm ERR!   at location: /home/crisanfitosserver/voaya-firebase/server 
+CLIENT_URL: http://localhost:9002
+🚀 Server running on port 3001
+Health check available at http://localhost:3001/health
+--- New Chat Request Received ---
+[2025-11-07T12:45:42.209Z] Received message: "test with gemini-2.5-pro"
+[2025-11-07T12:45:42.210Z] Categories: undefined
+[2025-11-07T12:45:42.211Z] Getting chat model...
+[2025-11-07T12:45:42.211Z] Chat model obtained. Sending message to Gemini...
+[2025-11-07T12:45:57.169Z] Received response from Gemini.
+[2025-11-07T12:45:57.170Z] Extracted response text: "Test initiated!
+
+You've mentioned Gemini 2.5 Pro. While I am a large language model developed by Goo..."
+[2025-11-07T12:45:57.170Z] Sending response to client.
+--- Chat Request Completed Successfully ---

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, TravelBrief } from '@shared/types';
 import { ApiService } from '@/services/api';
 import { ChatHeader } from './chat-header';
@@ -18,45 +18,51 @@ interface ChatViewProps {
 }
 
 const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery, selectedCategories }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'"
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isChatComplete, setIsChatComplete] = useState(false);
   const [internalInitialQuery, setInternalInitialQuery] = useState(initialQuery || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialMessageSent = useRef(false);
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = useCallback(async (text: string) => {
+    console.log(`[ChatView] sendMessage called with: "${text}"`);
     setIsLoading(true);
     const categories = selectedCategories ? Array.from(selectedCategories) : [];
 
     try {
+      console.log(`[ChatView] Calling ApiService.sendChatMessage...`);
       const response = await ApiService.sendChatMessage(text, categories);
+      console.log(`[ChatView] Received response from API:`, response);
 
       const modelMessage: ChatMessage = {
         role: 'assistant',
         text: response.text
       };
 
-      setMessages(prev => [...prev, modelMessage]);
+      console.log(`[ChatView] Updating messages state with new message...`);
+      setMessages(prev => {
+        const newMessages = [...prev, modelMessage];
+        console.log(`[ChatView] New messages state:`, newMessages);
+        return newMessages;
+      });
 
       if (response.text.includes("ya tengo una base muy sólida para empezar a buscar")) {
+        console.log(`[ChatView] Chat completion detected.`);
         setIsChatComplete(true);
       }
     } catch (err) {
-      console.error(err);
+      console.error(`[ChatView] Error calling API:`, err);
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Lo siento, estoy teniendo problemas para conectarme. Por favor, inténtalo de nuevo."
       }]);
     } finally {
+      console.log(`[ChatView] sendMessage finished.`);
       setIsLoading(false);
     }
-  };
+  }, [selectedCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,26 +74,28 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
 
     if (!internalInitialQuery) {
-      setInternalInitialQuery(input);
+      setInternalInitialQuery(currentInput);
     }
 
-    await sendMessage(input);
+    await sendMessage(currentInput);
   };
 
   useEffect(() => {
-    if (initialQuery) {
-      setInternalInitialQuery(initialQuery);
+    if (initialQuery && !initialMessageSent.current) {
       const userMessage: ChatMessage = {
         role: 'user',
         text: initialQuery
       };
-      setMessages(prev => [...prev, userMessage]);
+      setMessages([userMessage]);
+      setInternalInitialQuery(initialQuery);
       sendMessage(initialQuery);
+      initialMessageSent.current = true;
     }
-  }, [initialQuery]);
+  }, [initialQuery, sendMessage]);
 
   const handleConfirm = () => {
     onChatComplete({
@@ -97,9 +105,7 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   };
 
   const handleRestart = () => {
-    setMessages([
-      { role: 'assistant', text: "¡Hola! Soy Voaya. Describe el viaje de tus sueños y te ayudaré a planificarlo. Por ejemplo: 'Un viaje a Japón para 3 personas en verano'" }
-    ]);
+    setMessages([]);
     setInput('');
     setIsLoading(false);
     setIsChatComplete(false);

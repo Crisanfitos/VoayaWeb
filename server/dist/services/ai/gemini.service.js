@@ -1,23 +1,16 @@
-import {
-    GoogleGenerativeAI,
-    ChatSession,
-    GenerateContentResponse,
-    GenerativeModel,
-    HarmCategory,
-    HarmBlockThreshold,
-} from '@google/generative-ai';
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.geminiService = void 0;
+const generative_ai_1 = require("@google/generative-ai");
 if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY environment variable not set');
 }
-
 class GeminiService {
-    private ai: GoogleGenerativeAI;
-    private chatModels: Record<string, ChatSession>;
-    private defaultChatModel: ChatSession;
-
+    ai;
+    chatModels;
+    defaultChatModel;
     constructor() {
-        this.ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+        this.ai = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         this.chatModels = {};
         // Use a model supported by the current API version. Gemini model names on v1beta
         // may not be available; fall back to a stable Bison chat model.
@@ -26,8 +19,7 @@ class GeminiService {
         }).startChat();
         this.initializeChatModels();
     }
-
-    private initializeChatModels() {
+    initializeChatModels() {
         // Inicializar modelos de chat para diferentes categorías
         this.chatModels = {
             flights: this.createChatModel(['flights']),
@@ -42,21 +34,18 @@ class GeminiService {
                 'experiences',
             ]),
         };
-
         this.defaultChatModel = this.ai
             .getGenerativeModel({
-                model: 'gemini-2.5-pro',
-                generationConfig: {
-                    temperature: 0.9,
-                },
-            })
+            model: 'gemini-2.5-pro',
+            generationConfig: {
+                temperature: 0.9,
+            },
+        })
             .startChat();
     }
-
-    private createChatModel(categories: string[]): ChatSession {
+    createChatModel(categories) {
         const categorySet = new Set(categories);
         let specializedInstructions = this.getBaseInstructions();
-
         // Agregar instrucciones específicas según las categorías seleccionadas
         if (categorySet.has('flights')) {
             specializedInstructions += this.categoryInstructions.flights;
@@ -67,51 +56,46 @@ class GeminiService {
         if (categorySet.has('experiences')) {
             specializedInstructions += this.categoryInstructions.experiences;
         }
-
         return this.ai
             .getGenerativeModel({
-                model: 'gemini-2.5-pro',
-                generationConfig: {
-                    temperature: 0.9,
+            model: 'gemini-2.5-pro',
+            generationConfig: {
+                temperature: 0.9,
+            },
+            safetySettings: [
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                 },
-                safetySettings: [
-                    {
-                        category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    },
-                    {
-                        category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    },
-                    {
-                        category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    },
-                    {
-                        category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                        threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-                    },
-                ],
-            })
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+            ],
+        })
             .startChat();
     }
-
-    public getChatModelForCategories(categories?: string[]): ChatSession {
+    getChatModelForCategories(categories) {
         if (!categories || categories.length === 0) {
             return this.defaultChatModel;
         }
-
         // Ordenar las categorías para mantener consistencia en las claves
         const key = categories.sort().join('-');
         return this.chatModels[key] || this.defaultChatModel;
     }
-
-    private getBaseInstructions(): string {
+    getBaseInstructions() {
         return `# ROL Y OBJETIVO
 Eres **"VOAYA"**, un asistente de viaje virtual experto, amable y eficiente.`;
     }
-
-    private categoryInstructions = {
+    categoryInstructions = {
         flights: `Eres "VOAYA - Vuelos", un asistente de viaje virtual experto, amable y eficiente.
 Tu única y principal misión es entablar la conversación inicial con un cliente para recopilar la información esencial sobre los VUELOS que necesita.
 
@@ -173,7 +157,6 @@ Claridad: Haz preguntas directas, una a la vez.
 Enfoque: Tu única misión es recabar información de vuelos.
 
 Limitación: Si el cliente pregunta por hoteles o actividades, responde amablemente: "Mi especialidad es ayudar a definir los vuelos. Una vez tengamos esto, mis compañeros podrán ayudar con el resto."`,
-
         hotels: `Eres "VOAYA - Hoteles", un asistente de viaje virtual experto, amable y eficiente.
 Tu única y principal misión es entablar la conversación inicial con un cliente para recopilar la información esencial sobre el ALOJAMIENTO que necesita.
 
@@ -235,7 +218,6 @@ Claridad: Haz preguntas directas, una a la vez.
 Enfoque: Tu única misión es recabar información de hoteles.
 
 Limitación: Si el cliente pregunta por vuelos o actividades, responde amablemente: "Mi especialidad es ayudar a definir el alojamiento. Una vez tengamos esto, mis compañeros os ayudarán después."`,
-
         experiences: `Eres "VOAYA - Experiencias", un asistente de viaje virtual experto, amable y eficiente.
 Tu única y principal misión es entablar la conversación inicial con un cliente para recopilar la información esencial sobre las ACTIVIDADES Y EXPERIENCIAS que desea realizar.
 
@@ -298,23 +280,20 @@ Enfoque: Tu única misión es recabar información de experiencias.
 
 Limitación: Si el cliente pregunta por vuelos u hoteles, responde amablemente: "Mi especialidad es ayudar a planificar las actividades. Una vez tengamos esto, mis compañeros os ayudarán después."`,
     };
-
-    public async generatePlan(brief: any, userLocation: any): Promise<any> {
-        const planGenerationModel: GenerativeModel = this.ai.getGenerativeModel({
+    async generatePlan(brief, userLocation) {
+        const planGenerationModel = this.ai.getGenerativeModel({
             model: 'gemini-2.5-pro',
             generationConfig: {
                 temperature: 0.7,
             },
             safetySettings: [
                 {
-                    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                    category: generative_ai_1.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold: generative_ai_1.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                 },
             ],
         });
-
         // ... resto de la lógica de generatePlan
     }
 }
-
-export const geminiService = new GeminiService();
+exports.geminiService = new GeminiService();

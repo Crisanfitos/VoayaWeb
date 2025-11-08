@@ -1,9 +1,10 @@
 import { ChatMessage, TravelBrief, TravelPlan } from '@shared/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.121:3001';
 
 export class ApiService {
     private static async fetchApi(endpoint: string, options: RequestInit = {}) {
+        console.log(`[ApiService] Fetching ${API_URL}${endpoint}`);
         const response = await fetch(`${API_URL}${endpoint}`, {
             ...options,
             headers: {
@@ -12,11 +13,22 @@ export class ApiService {
             },
         });
 
+        console.log(`[ApiService] Response received with status: ${response.status}`);
+
         if (!response.ok) {
+            console.error(`[ApiService] API error: ${response.status}`);
             throw new Error(`API error: ${response.status}`);
         }
 
-        return response.json();
+        const responseText = await response.text();
+        console.log(`[ApiService] Raw response text:`, responseText);
+
+        try {
+            return JSON.parse(responseText);
+        } catch (error) {
+            console.error(`[ApiService] Error parsing JSON:`, error);
+            throw new Error('Error parsing JSON response');
+        }
     }
 
     static async sendChatMessage(message: string, categories?: string[]) {

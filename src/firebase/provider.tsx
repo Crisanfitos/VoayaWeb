@@ -3,7 +3,8 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { parseTimeoutMs, STORAGE_KEY, getLastActivity, setLastActivity, computeRemaining } from '../../client/src/firebase/inactivity';
 import { FirebaseErrorListener } from '../../client/src/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
@@ -88,6 +89,77 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     );
     return () => unsubscribe(); // Cleanup
   }, [auth]); // Depends on the auth instance
+
+  // Inactivity timeout: sign out user after a period of inactivity.
+  // We track last activity in localStorage so the timeout survives page reloads/close-and-open.
+  useEffect(() => {
+    if (!auth) return; // nothing to do without auth
+
+    // read timeout from public env var (client-side) if provided, else default to 30 minutes
+    const timeoutMs = parseTimeoutMs((process as any)?.env?.NEXT_PUBLIC_SESSION_TIMEOUT_MS, 30 * 60 * 1000);
+    let signOutTimer: number | null = null;
+
+
+    const clearTimer = () => {
+      if (signOutTimer !== null) {
+        window.clearTimeout(signOutTimer);
+        signOutTimer = null;
+      }
+    };
+
+    const scheduleSignOut = (remainingMs: number) => {
+      clearTimer();
+      // If remaining is already past, sign out immediately
+      if (remainingMs <= 0) {
+        try {
+          signOut(auth).catch(err => console.error('Auto signOut error:', err));
+        } catch (e) {
+          console.error('Auto signOut error (sync):', e);
+        }
+        return;
+      }
+
+      signOutTimer = window.setTimeout(() => {
+        signOut(auth).catch(err => console.error('Auto signOut error:', err));
+      }, remainingMs);
+    };
+
+    const handleUserActivity = () => {
+      setLastActivity();
+      scheduleSignOut(timeoutMs);
+    };
+
+    // Initialize: check stored last activity. If too old, sign out immediately.
+    const last = getLastActivity();
+    const now = Date.now();
+    const remaining = computeRemaining(timeoutMs, now, last);
+    if (remaining <= 0 && last !== null) {
+      // expired already
+      signOut(auth).catch(err => console.error('Auto signOut on init error:', err));
+    } else {
+      scheduleSignOut(remaining);
+    }
+
+    // Listen for typical activity events
+    const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(ev => window.addEventListener(ev, handleUserActivity));
+    // update activity when page becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleUserActivity();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // store activity timestamp on unload so next session knows last active time
+    const handleBeforeUnload = () => setLastActivity();
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearTimer();
+      events.forEach(ev => window.removeEventListener(ev, handleUserActivity));
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [auth]);
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {

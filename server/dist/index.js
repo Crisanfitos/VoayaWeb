@@ -1,38 +1,35 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
-
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
 // Cargar variables de entorno
-dotenv.config({
-    path: path.resolve(__dirname, '../.env')
+dotenv_1.default.config({
+    path: path_1.default.resolve(__dirname, '../.env')
 });
-
 // Importar rutas
-import chatRoutes from './api/chat/chat.controller';
-
-const app = express();
+const chat_controller_1 = __importDefault(require("./api/chat/chat.controller"));
+const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
-
 console.log(`CLIENT_URL: ${process.env.CLIENT_URL}`);
-
 // Middlewares
-app.use(cors({
+app.use((0, cors_1.default)({
     origin: '*',
     credentials: true
 }));
-app.use(express.json());
-
+app.use(express_1.default.json());
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
 // Rutas API
-app.use('/api/chat', chatRoutes);
-
+app.use('/api/chat', chat_controller_1.default);
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err, req, res, next) => {
     console.error('Error:', err);
     res.status(err.status || 500).json({
         error: {
@@ -41,7 +38,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
         }
     });
 });
-
 // Iniciar servidor
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);

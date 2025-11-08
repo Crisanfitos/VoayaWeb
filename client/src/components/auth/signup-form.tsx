@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -20,31 +21,50 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Eye, EyeOff } from 'lucide-react';
 
-const formSchema = z.object({
-  firstName: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
-  lastName: z.string().min(2, { message: 'El apellido debe tener al menos 2 caracteres.' }),
-  email: z.string().email({
-    message: 'Por favor, introduce una dirección de correo válida.',
-  }),
-  password: z.string().min(6, {
-    message: 'La contraseña debe tener al menos 6 caracteres.',
-  }),
-  confirmPassword: z.string(),
-  preferredCurrency: z.string({
-    required_error: 'Por favor, selecciona una moneda.',
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Las contraseñas no coinciden.",
-  path: ["confirmPassword"],
-});
+const formSchema = z
+  .object({
+    firstName: z
+      .string()
+      .min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
+    lastName: z
+      .string()
+      .min(2, { message: 'El apellido debe tener al menos 2 caracteres.' }),
+    email: z
+      .string()
+      .email({
+        message: 'Por favor, introduce una dirección de correo válida.',
+      }),
+    password: z
+      .string()
+      .min(6, {
+        message: 'La contraseña debe tener al menos 6 caracteres.',
+      }),
+    confirmPassword: z.string(),
+    preferredCurrency: z.string({
+      required_error: 'Por favor, selecciona una moneda.',
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Las contraseñas no coinciden.",
+    path: ["confirmPassword"],
+  });
 
 export function SignUpForm() {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -149,7 +169,32 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Contraseña</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Tu contraseña" {...field} />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Tu contraseña"
+                        className="pr-10"
+                        {...field}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-10 text-muted-foreground transition-opacity duration-200 hover:opacity-75"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                        <span className="sr-only">
+                          {showPassword
+                            ? 'Ocultar contraseña'
+                            : 'Mostrar contraseña'}
+                        </span>
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,7 +207,32 @@ export function SignUpForm() {
                 <FormItem>
                   <FormLabel>Confirmar Contraseña</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Confirma tu contraseña" {...field} />
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder="Confirma tu contraseña"
+                        className="pr-10"
+                        {...field}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute inset-y-0 right-0 flex items-center justify-center h-full w-10 text-muted-foreground transition-opacity duration-200 hover:opacity-75"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                        <span className="sr-only">
+                          {showConfirmPassword
+                            ? 'Ocultar contraseña'
+                            : 'Mostrar contraseña'}
+                        </span>
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
