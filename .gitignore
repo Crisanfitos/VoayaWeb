@@ -42,4 +42,17 @@ next-env.d.ts
 
 # firebase
 firebase-debug.log
-firestore-debug.log
+firestore-debug.log**/.next/cache/
+
+# Next.js
+.next/
+.next/*
+**/.next/*
+
+# Next.js
+.next
+.next/
+**/.next/
+**/.next
+**/node_modules/.cache
+
