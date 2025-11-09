@@ -56,3 +56,12 @@ firestore-debug.log**/.next/cache/
 **/.next
 **/node_modules/.cache
 
+
+# Next.js
+.next
+.next/
+**/.next/
+**/.next
+**/node_modules/.cache
+.vercel
+
