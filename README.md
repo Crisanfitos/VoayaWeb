@@ -6,6 +6,107 @@ Voaya es una aplicación web innovadora diseñada para reinventar la forma en qu
 
 Nuestra visión es hacer que la planificación de viajes sea una experiencia fluida, personalizada y emocionante. Voaya elimina el estrés y la incertidumbre de la planificación de viajes al proporcionar recomendaciones inteligentes y asistencia contextual, permitiéndote centrarte en disfrutar de tu viaje al máximo.
 
+## Estructura de Datos
+
+### Objeto Chat
+```typescript
+interface Chat {
+  id: string;                 // Identificador único del chat
+  userId: string;            // Usuario propietario del chat
+  createdAt: Date;           // Fecha de creación
+  title: string;             // Derivado del primer mensaje del usuario
+  status: 'active' | 'completed' | 'archived'; // Estado del chat
+  category: string[];        // Categorías (vuelos, hoteles, experiencias)
+  lastMessageAt: Date;       // Timestamp del último mensaje
+  metadata: {
+    destination?: string;    // Destino identificado
+    dates?: {
+      start?: Date;         // Fecha de inicio del viaje
+      end?: Date;          // Fecha de fin del viaje
+    };
+    travelers?: number;     // Número de viajeros
+    preferences?: {         // Preferencias adicionales capturadas
+      [key: string]: any;
+    }
+  }
+}
+```
+
+### Objeto Mensaje
+```typescript
+interface Message {
+  id: string;              // Identificador único del mensaje
+  chatId: string;          // Referencia al chat padre
+  role: 'user' | 'assistant'; // Quien envió el mensaje
+  text: string;            // Contenido del mensaje
+  createdAt: Date;         // Fecha de envío
+  metadata?: {             // Metadatos opcionales
+    intent?: string;      // Intención identificada
+    entities?: {          // Entidades nombradas extraídas
+      [key: string]: any;
+    };
+    context?: {           // Información contextual
+      [key: string]: any;
+    }
+  }
+}
+```
+
+## Flujo de la Aplicación - Gestión de Chats
+
+### 1. Inicio de Nuevo Chat
+1. **Interfaz de Usuario**:
+   - Usuario hace clic en "Nuevo Chat" en `/client/src/app/chats/page.tsx`
+   - Redirección a la interfaz de chat con estado vacío
+
+2. **Creación del Chat**:
+   - En `/client/src/app/chats/[chatId]/page.tsx`:
+     - Crear nuevo documento de chat en Firestore
+     - Inicializar con estado por defecto
+     - Devolver ID del chat al frontend
+
+3. **Inicialización del Servicio AI**:
+   - En `/src/services/geminiService.ts`:
+     - Crear nueva instancia de chat con Gemini
+     - Configurar modelo basado en categorías detectadas/seleccionadas
+
+### 2. Flujo de Mensajes
+1. **Primer Mensaje del Usuario**:
+   - Captura del mensaje en frontend
+   - Creación del documento de mensaje en Firestore
+   - Activación del procesamiento AI
+
+2. **Procesamiento AI**:
+   - Análisis del mensaje para intención y entidades
+   - Actualización de metadatos del chat
+   - Generación de respuesta
+   - Almacenamiento en Firestore
+
+3. **Interacción Continua**:
+   - Actualización de metadatos del chat
+   - Mantenimiento del contexto a través del historial
+   - Actualización en tiempo real con listeners de Firestore
+
+### 3. Estructura Firestore
+```
+/chats/{chatId}/
+  - id: string
+  - userId: string
+  - createdAt: timestamp
+  - title: string
+  - status: string
+  - category: array
+  - lastMessageAt: timestamp
+  - metadata: map
+
+/chats/{chatId}/messages/{messageId}
+  - id: string
+  - role: string
+  - text: string
+  - createdAt: timestamp
+  - metadata: map
+```
+
 ## ¿Qué Ofrece Voaya?
 
 -   **Planificación de Viajes Inteligente:** Genera planes de viaje completos y personalizados basados en tus intereses, presupuesto y estilo de viaje.

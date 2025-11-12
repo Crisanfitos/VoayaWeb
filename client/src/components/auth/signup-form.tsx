@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Eye, EyeOff } from 'lucide-react';
+import { saveUserIdToCookie } from '@/lib/cookies';
 
 const formSchema = z
   .object({
@@ -94,6 +95,9 @@ export function SignUpForm() {
         preferredCurrency,
         dateJoined: new Date().toISOString(),
       });
+
+      // Save userId to cookies
+      saveUserIdToCookie(user.uid);
 
       toast({
         title: "Cuenta creada",

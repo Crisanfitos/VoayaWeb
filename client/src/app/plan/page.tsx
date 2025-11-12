@@ -12,6 +12,8 @@ import ChatView from '@/components/chat/chat-view';
 import { TravelPlan, TravelBrief } from '@/types';
 import { generatePlan } from '@/app/actions/chat-actions';
 import { processAndSendData } from '@/app/actions';
+import { getUserIdFromCookie, getChatIdFromCookie, saveChatIdToCookie } from '@/lib/cookies';
+import { ApiService } from '@/services/api';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
@@ -21,8 +23,8 @@ function PlanPageComponent() {
   const searchParams = useSearchParams();
 
   const [tripDescription, setTripDescription] = useState('');
-  const [isStartingChat, setIsStartingChat] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights']));
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights'] as SearchCategory[]));
   const [isSendingToWebhook, setIsSendingToWebhook] = useState(false);
 
   // State for the view
@@ -31,7 +33,7 @@ function PlanPageComponent() {
   const [planError, setPlanError] = useState<string | null>(null);
 
   useEffect(() => {
-    const chatIdFromUrl = searchParams.get('chatId');
+    const chatIdFromUrl = searchParams?.get('chatId');
     if (chatIdFromUrl) {
       // This logic can be adapted if we still want to link to old chats
       // For now, starting fresh is the main flow.
@@ -73,11 +75,56 @@ function PlanPageComponent() {
     return placeholders[sortedCategories] || placeholders['flights,hotels,experiences'];
   }, [selectedCategories]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tripDescription) return;
-    setIsStartingChat(true);
-    setCurrentView('chat');
+
+    console.log('[PlanPage] handleSubmit called with description:', tripDescription);
+    setIsCreatingChat(true);
+
+    try {
+      const userId = getUserIdFromCookie();
+      console.log('[PlanPage] userId from cookie:', userId);
+
+      if (!userId) {
+        console.error('[PlanPage] No userId found in cookies');
+        alert('Por favor, inicia sesión primero');
+        setIsCreatingChat(false);
+        return;
+      }
+
+      const categories = Array.from(selectedCategories);
+      console.log('[PlanPage] Calling ApiService.startChat with:', { userId, categories });
+
+      // Create chat on server first
+      const chatResponse = await ApiService.startChat(userId, categories);
+      console.log('[PlanPage] chatResponse received:', chatResponse);
+
+      if (!chatResponse || !chatResponse.chatId) {
+        console.error('[PlanPage] No chatId in response:', chatResponse);
+        alert('Error al crear el chat: respuesta inválida del servidor');
+        setIsCreatingChat(false);
+        return;
+      }
+
+      const newChatId = chatResponse.chatId;
+      console.log('[PlanPage] newChatId:', newChatId);
+
+      // Save chatId to cookies
+      saveChatIdToCookie(newChatId);
+      console.log('[PlanPage] chatId saved to cookies');
+
+      // Now change view to chat
+      console.log('[PlanPage] Changing view to chat');
+      setCurrentView('chat');
+    } catch (error) {
+      console.error('[PlanPage] Failed to create chat:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`Error al crear el chat: ${errorMessage}`);
+      setIsCreatingChat(false);
+    } finally {
+      setIsCreatingChat(false);
+    }
   };
 
   const handleChatComplete = async (brief: TravelBrief) => {
@@ -113,11 +160,12 @@ function PlanPageComponent() {
     }
   };
 
-  if (isUserLoading || isSendingToWebhook) {
+  if (isUserLoading || isSendingToWebhook || isCreatingChat) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader />
         {isSendingToWebhook && <p className="ml-4">Enviando tu solicitud de vuelo...</p>}
+        {isCreatingChat && <p className="ml-4">Creando tu chat...</p>}
       </div>
     );
   }
@@ -134,6 +182,8 @@ function PlanPageComponent() {
           error={null}
           initialQuery={tripDescription}
           selectedCategories={selectedCategories}
+          userId={user.uid}
+          chatId={getChatIdFromCookie() || undefined}
         />
       </div>
     );
@@ -210,9 +260,9 @@ function PlanPageComponent() {
             type="submit"
             size="lg"
             className="h-12 px-10 rounded-full bg-accent text-accent-foreground hover:bg-accent/90 transition-transform duration-300 ease-in-out disabled:scale-100 enabled:hover:scale-105"
-            disabled={isStartingChat || !tripDescription}
+            disabled={isCreatingChat || !tripDescription}
           >
-            {isStartingChat ? <Loader /> : 'Enviar'}
+            {isCreatingChat ? <Loader /> : 'Enviar'}
           </Button>
         </form>
       </div>

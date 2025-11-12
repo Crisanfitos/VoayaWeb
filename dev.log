@@ -1,0 +1,225 @@
+
+> voaya@0.1.0 dev
+> concurrently "npm run dev:client" "npm run dev:server"
+
+[1] 
+[1] > voaya@0.1.0 dev:server
+[1] > npm run dev --workspace=server
+[1] 
+[0] 
+[0] > voaya@0.1.0 dev:client
+[0] > npm run dev --workspace=client
+[0] 
+[0] 
+[0] > @voaya/client@0.1.0 dev
+[0] > next dev --turbo -p 9002
+[0] 
+[1] 
+[1] > @voaya/server@1.0.0 dev
+[1] > nodemon src/index.ts
+[1] 
+[1] [33m[nodemon] 3.1.10[39m
+[1] [33m[nodemon] to restart at any time, enter `rs`[39m
+[1] [33m[nodemon] watching path(s): *.*[39m
+[1] [33m[nodemon] watching extensions: ts,json[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[0]  ⨯ Failed to start server
+[0] Error: listen EADDRINUSE: address already in use :::9002
+[0]     at <unknown> (Error: listen EADDRINUSE: address already in use :::9002)
+[0]     at new Promise (<anonymous>) {
+[0]   code: 'EADDRINUSE',
+[0]   errno: -98,
+[0]   syscall: 'listen',
+[0]   address: '::',
+[0]   port: 9002
+[0] }
+[0] [?25h
+[0] npm run dev:client exited with code 0
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m
+[1] [32m[nodemon] restarting due to changes...[39m
+[1] [32m[nodemon] starting `ts-node src/index.ts`[39m
+[1] ✓ Gemini API initialized
+[1] CLIENT_URL: http://localhost:9002
+[1] Error: listen EADDRINUSE: address already in use :::3001
+[1]     at Server.setupListenHandle [as _listen2] (node:net:1902:16)
+[1]     at listenInCluster (node:net:1959:12)
+[1]     at Server.listen (node:net:2061:7)
+[1]     at Function.listen (/home/crisanfitosserver/voaya-firebase/node_modules/express/lib/application.js:635:24)
+[1]     at Object.<anonymous> (/home/crisanfitosserver/voaya-firebase/server/src/index.ts:46:5)
+[1]     at Module._compile (node:internal/modules/cjs/loader:1529:14)
+[1]     at Module.m._compile (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1618:23)
+[1]     at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+[1]     at Object.require.extensions.<computed> [as .ts] (/home/crisanfitosserver/voaya-firebase/node_modules/ts-node/src/index.ts:1621:12)
+[1]     at Module.load (node:internal/modules/cjs/loader:1275:32) {
+[1]   code: 'EADDRINUSE',
+[1]   errno: -98,
+[1]   syscall: 'listen',
+[1]   address: '::',
+[1]   port: 3001
+[1] }
+[1] [31m[nodemon] app crashed - waiting for file changes before starting...[39m

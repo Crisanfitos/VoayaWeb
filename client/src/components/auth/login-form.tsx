@@ -22,6 +22,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { saveUserIdToCookie } from '@/lib/cookies';
 
 const formSchema = z.object({
   email: z.string().email({
@@ -49,7 +50,12 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!auth) return;
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userId = userCredential.user.uid;
+
+      // Save userId to cookies
+      saveUserIdToCookie(userId);
+
       toast({
         title: "Inicio de sesión exitoso",
         description: "Bienvenido de vuelta!",

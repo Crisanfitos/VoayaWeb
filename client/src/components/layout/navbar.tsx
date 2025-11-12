@@ -16,6 +16,7 @@ import {
 import { Logo } from "../logo";
 import { useUser, useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { clearVoayaCookies } from "@/lib/cookies";
 
 const navLinks = [
   { href: "/", label: "Inicio" },
@@ -26,10 +27,10 @@ const navLinks = [
 ];
 
 const privateNavLinks = [
-    { href: "/plan", label: "Planificador" },
-    { href: "/chats", label: "Chats" },
-    { href: "/my-trips", label: "Mis Viajes" },
-    { href: "/settings", label: "Configuración" },
+  { href: "/plan", label: "Planificador" },
+  { href: "/chats", label: "Chats" },
+  { href: "/my-trips", label: "Mis Viajes" },
+  { href: "/settings", label: "Configuración" },
 ]
 
 export function Navbar() {
@@ -39,6 +40,8 @@ export function Navbar() {
 
   const handleSignOut = () => {
     if (auth) {
+      // Clear cookies before signing out
+      clearVoayaCookies();
       signOut(auth);
     }
   };
@@ -51,12 +54,12 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const renderNavLinks = (links: {href: string, label: string}[], isMobile: boolean) => (
+  const renderNavLinks = (links: { href: string, label: string }[], isMobile: boolean) => (
     <nav className={cn("flex items-center", isMobile ? "flex-col space-y-4" : "space-x-6")}>
       {links.map((link) => {
         const LinkComponent = isMobile ? SheetClose : 'div';
         const props = isMobile ? { asChild: true } : {};
-        
+
         return (
           <LinkComponent {...props} key={link.label}>
             <Link href={link.href} passHref>
@@ -126,7 +129,7 @@ export function Navbar() {
               </SheetHeader>
               <div className="flex flex-col space-y-8 pt-10">
                 <Link href="/" className="flex items-center space-x-2 self-start">
-                   <Logo />
+                  <Logo />
                 </Link>
                 {renderNavLinks(user ? privateNavLinks : navLinks, true)}
                 <div className="border-t border-border pt-6">

@@ -4,12 +4,9 @@ import { ServicesSection } from "@/components/landing/services-section";
 import { VisionSection } from "@/components/landing/vision-section";
 import { TestimonialsSection } from "@/components/landing/testimonials-section";
 import { ContactSection } from "@/components/landing/contact-section";
-import { getModelInfo } from "@/app/actions";
 import AuthRedirect from '@/components/auth/AuthRedirect';
 
 export default async function Home() {
-  const modelInfo = await getModelInfo();
-  console.log(modelInfo);
   return (
     <>
       {/* Redirect returning authenticated users to the planner */}

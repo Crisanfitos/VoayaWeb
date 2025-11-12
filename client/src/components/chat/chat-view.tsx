@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChatMessage, TravelBrief } from '@shared/types';
+import { ChatMessage, TravelBrief } from '@/types';
 import { ApiService } from '@/services/api';
 import { ChatHeader } from './chat-header';
 import { ChatMessages } from './chat-messages';
 import { ChatInput } from './chat-input';
 import { ChatCompletionControls } from './chat-completion-controls';
+import { getUserIdFromCookie, getChatIdFromCookie, saveChatIdToCookie } from '@/lib/cookies';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
@@ -15,30 +16,73 @@ interface ChatViewProps {
   error: string | null;
   initialQuery?: string;
   selectedCategories?: Set<SearchCategory>;
+  userId?: string;
+  chatId?: string;
+  initialMessages?: ChatMessage[];
+  initialStatus?: string;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery, selectedCategories }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery, selectedCategories, initialMessages, initialStatus }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages || []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isChatComplete, setIsChatComplete] = useState(false);
+  const [isChatComplete, setIsChatComplete] = useState(!!initialStatus && initialStatus === 'completed');
   const [internalInitialQuery, setInternalInitialQuery] = useState(initialQuery || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageSent = useRef(false);
 
+  // Get userId and chatId from cookies
+  const userId = getUserIdFromCookie();
+  const chatId = getChatIdFromCookie();
+
+  // Log initial status for debugging and detect if chat should show completion buttons
+  useEffect(() => {
+    console.log('[ChatView] Initialized with initialStatus:', initialStatus);
+    console.log('[ChatView] Initial messages count:', messages.length);
+    
+    // Show completion buttons if:
+    // 1. Status is 'completed' or 'finished', OR
+    // 2. Status is 'active' and there are messages (chat has content)
+    const shouldShowComplete = 
+      initialStatus && 
+      (initialStatus === 'completed' || 
+       initialStatus === 'finished' || 
+       (initialStatus === 'active' && messages.length > 0));
+    
+    console.log('[ChatView] shouldShowComplete:', shouldShowComplete);
+    if (shouldShowComplete && !isChatComplete) {
+      setIsChatComplete(true);
+    }
+  }, [initialStatus, messages.length, isChatComplete]);
+
   const sendMessage = useCallback(async (text: string) => {
     console.log(`[ChatView] sendMessage called with: "${text}"`);
+    console.log(`[ChatView] userId: ${userId}, chatId: ${chatId}`);
+
+    if (!userId || !chatId) {
+      console.error('[ChatView] Missing userId or chatId from cookies');
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: "Error: No se pudo identificar tu sesión. Por favor, inicia sesión de nuevo."
+      }]);
+      return;
+    }
+
     setIsLoading(true);
-    const categories = selectedCategories ? Array.from(selectedCategories) : [];
 
     try {
-      console.log(`[ChatView] Calling ApiService.sendChatMessage...`);
-      const response = await ApiService.sendChatMessage(text, categories);
+      console.log(`[ChatView] Calling ApiService.sendMessage...`);
+      const response = await ApiService.sendMessage(chatId, text, userId);
       console.log(`[ChatView] Received response from API:`, response);
+
+      if (!response.message || typeof response.message.text !== 'string') {
+        console.error('[ChatView] Invalid response structure:', response);
+        throw new Error('Invalid response structure from server');
+      }
 
       const modelMessage: ChatMessage = {
         role: 'assistant',
-        text: response.text
+        text: response.message.text
       };
 
       console.log(`[ChatView] Updating messages state with new message...`);
@@ -48,8 +92,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
         return newMessages;
       });
 
-      if (response.text.includes("ya tengo una base muy sólida para empezar a buscar")) {
-        console.log(`[ChatView] Chat completion detected.`);
+      // Check if chat should be marked as complete based on the assistant's message
+      if (modelMessage.text.includes("ya tengo una base muy sólida para empezar a buscar")) {
+        console.log(`[ChatView] Chat completion detected from Gemini response.`);
         setIsChatComplete(true);
       }
     } catch (err) {
@@ -97,11 +142,19 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     }
   }, [initialQuery, sendMessage]);
 
-  const handleConfirm = () => {
-    onChatComplete({
-      initialQuery: internalInitialQuery || messages.find(m => m.role === 'user')?.text || '',
-      chatHistory: messages
-    });
+  const handleConfirm = async () => {
+    // Mark chat as completed before redirecting
+    if (chatId) {
+      try {
+        console.log('[ChatView] Marking chat as completed...');
+        await ApiService.completeChat(chatId);
+        console.log('[ChatView] Chat marked as completed');
+      } catch (err) {
+        console.error('[ChatView] Error completing chat:', err);
+      }
+    }
+    // Reload the planner page
+    window.location.href = '/plan';
   };
 
   const handleRestart = () => {

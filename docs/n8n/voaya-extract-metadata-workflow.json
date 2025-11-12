@@ -1,0 +1,140 @@
+{
+    "name": "Voaya - Extract Chat Metadata",
+    "nodes": [
+        {
+            "parameters": {
+                "path": "voaya/extract-metadata",
+                "httpMethod": "POST",
+                "responseMode": "onReceived",
+                "responseData": "{"","options": {}
+            },
+            "name": "Voaya Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "systemPrompt",
+                            "value": "={{ $json[\"body\"].systemPrompt || processEnv.N8N_SYSTEM_PROMPT || `Eres un agente que extrae metadatos de una conversación de planificación de viajes. Recibe un objeto 'chat' y un array 'messages'. Devuelve UN ÚNICO JSON con {\"chatId\":..., \"metadata\":{...}} en ISO dates.` }}"
+                        },
+                        {
+                            "name": "chatId",
+                            "value": "={{ $json[\"body\"][\"chat\"][\"id\"] }}"
+                        },
+                        {
+                            "name": "messagesString",
+                            "value": "={{ $json[\"body\"][\"messages\"]?.map(m => (m.role.toUpperCase()+': '+m.text)).join('\n') }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Prepare Prompt",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "={{ processEnv.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions' }}",
+                "jsonParameters": true,
+                "options": {},
+                "bodyParametersJson": "={\n          \"model\": processEnv.OPENAI_MODEL || 'gpt-4o-mini',\n          \"messages\": [\n            { \"role\": \"system\", \"content\": $json.systemPrompt },\n            { \"role\": \"user\", \"content\": $json.messagesString }\n          ],\n          \"temperature\": 0.0,\n          \"max_tokens\": 800\n        }"
+            },
+            "name": "Call LLM (OpenAI)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "functionCode": "// Parse LLM output and produce JSON with chatId + metadata\nconst result = items[0].json;\nlet text = '';// content from response depends on provider\nif (result.choices && result.choices[0] && result.choices[0].message) {\n  text = result.choices[0].message.content;\n} else if (result.choices && result.choices[0] && result.choices[0].text) {\n  text = result.choices[0].text;\n} else if (result.data && result.data[0] && result.data[0].content) {\n  text = result.data[0].content;\n}\n\n// Try to extract JSON from text\nconst tryJson = (s) => {\n  try { return JSON.parse(s); } catch (e) {\n    // extract first {...} block\n    const m = s.match(/\{[\s\S]*\}/);\n    if (m) { try { return JSON.parse(m[0]); } catch (e2) { return null; } }\n    return null;\n  }\n};\n\nlet parsed = tryJson(text);\nif (!parsed) parsed = { chatId: $json.chatId, metadata: { raw_text: text } };\nif (!parsed.chatId) parsed.chatId = $json.chatId;\nreturn [{ json: { chatId: parsed.chatId, metadata: parsed.metadata } }];"
+            },
+            "name": "Parse LLM Output",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                850,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "={{ processEnv.VOAYA_CALLBACK_URL || processEnv.BASE_URL + '/api/chat/webhook-callback' }}",
+                "jsonParameters": true,
+                "options": {},
+                "bodyParametersJson": "={\n  \"chatId\": $json.chatId,\n  \"metadata\": $json.metadata,\n  \"secret\": processEnv.WEBHOOK_SECRET || null\n}"
+            },
+            "name": "Callback Voaya",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Voaya Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Prompt",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "Call LLM (OpenAI)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call LLM (OpenAI)": {
+            "main": [
+                [
+                    {
+                        "node": "Parse LLM Output",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse LLM Output": {
+            "main": [
+                [
+                    {
+                        "node": "Callback Voaya",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {}
+}
