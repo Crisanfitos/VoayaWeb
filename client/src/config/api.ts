@@ -1,18 +1,23 @@
-// Detectar la URL del API basado en el host actual
+// Usar variable de entorno o detectar dinámicamente
 export const getApiUrl = (): string => {
-    if (typeof window === 'undefined') {
-        return 'http://localhost:3001'; // SSR
+    // Primero intenta usar la variable de entorno para flexibilidad
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL;
     }
 
-    const hostname = window.location.hostname;
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-
-    if (isLocalhost) {
+    // En el lado del servidor (SSR) o en desarrollo local, apunta a localhost
+    if (typeof window === 'undefined' || window.location.hostname === 'localhost') {
         return 'http://localhost:3001';
-    } else {
-        // Para acceso remoto, usar la misma IP/host
-        return `http://${hostname}:3001`;
     }
+
+    // En producción (cuando se accede a través de un dominio), usa una ruta relativa
+    // para que las peticiones se dirijan al mismo host que sirve la app Next.js.
+    // Next.js se encargará de actuar como proxy para estas peticiones.
+    return '/api';
 };
 
 export const API_URL = getApiUrl();
+
+
+
+console.log('[API Config] API_URL:', API_URL);

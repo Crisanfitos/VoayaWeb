@@ -7,19 +7,29 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
-// Cargar variables de entorno
-dotenv_1.default.config({
-    path: path_1.default.resolve(__dirname, '../.env')
-});
+// Cargar variables de entorno según el ambiente
+const envPath = process.env.NODE_ENV === 'production'
+    ? path_1.default.resolve(__dirname, '../.env.production')
+    : path_1.default.resolve(__dirname, '../.env');
+dotenv_1.default.config({ path: envPath });
+console.log(`Loading environment variables from: ${envPath}`);
 // Importar rutas
 const chat_controller_1 = __importDefault(require("./api/chat/chat.controller"));
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3001;
 console.log(`CLIENT_URL: ${process.env.CLIENT_URL}`);
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+// Configurar CORS según el ambiente
+const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+    ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : ['http://localhost:9002', 'http://localhost:3000'];
+console.log(`CORS allowed origins: ${corsOrigins.join(', ')}`);
 // Middlewares
 app.use((0, cors_1.default)({
-    origin: '*',
-    credentials: true
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express_1.default.json());
 // Health check endpoint

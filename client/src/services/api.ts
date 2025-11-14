@@ -41,21 +41,21 @@ export class ApiService {
             throw error;
         }
     } static async startChat(userId: string, categories: string[] = []) {
-        return this.fetchApi('/api/chat/start', {
+        return this.fetchApi('/chat/start', {
             method: 'POST',
             body: JSON.stringify({ userId, categories }),
         });
     }
 
     static async sendMessage(chatId: string, text: string, userId: string) {
-        return this.fetchApi('/api/chat/message', {
+        return this.fetchApi('/chat/message', {
             method: 'POST',
             body: JSON.stringify({ chatId, text, userId }),
         });
     }
 
     static async completeChat(chatId: string) {
-        return this.fetchApi('/api/chat/complete', {
+        return this.fetchApi('/chat/complete', {
             method: 'POST',
             body: JSON.stringify({ chatId }),
         });
@@ -63,27 +63,27 @@ export class ApiService {
 
     static async getChats(userId?: string) {
         const qs = userId ? `?userId=${encodeURIComponent(userId)}` : '';
-        return this.fetchApi(`/api/chat${qs}`, {
+        return this.fetchApi(`/chat${qs}`, {
             method: 'GET'
         });
     }
 
     static async getChat(chatId: string) {
         if (!chatId) throw new Error('chatId required');
-        return this.fetchApi(`/api/chat/${encodeURIComponent(chatId)}`, {
+        return this.fetchApi(`/chat/${encodeURIComponent(chatId)}`, {
             method: 'GET'
         });
     }
 
     static async sendToExternal(chatId: string, webhookUrl?: string) {
-        return this.fetchApi('/api/chat/send-external', {
+        return this.fetchApi('/chat/send-external', {
             method: 'POST',
             body: JSON.stringify({ chatId, webhookUrl }),
         });
     }
 
     static async generatePlan(brief: TravelBrief, userLocation: GeolocationPosition | null) {
-        return this.fetchApi('/api/chat/generate-plan', {
+        return this.fetchApi('/chat/generate-plan', {
             method: 'POST',
             body: JSON.stringify({ brief, userLocation }),
         }) as Promise<TravelPlan>;

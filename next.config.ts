@@ -1,7 +1,17 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
+
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "next dev --turbo -p 9002",
         "build": "next build",
-        "start": "next start",
+        "build:prod": "NODE_ENV=production next build",
+        "start": "next start -p 80",
         "lint": "next lint",
         "test": "vitest --environment jsdom"
     },
