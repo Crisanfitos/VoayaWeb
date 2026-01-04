@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser } from '@/lib/auth';
 import { SignUpForm } from '@/components/auth/signup-form';
 import { useEffect } from 'react';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useDoc, useAuth } from '@/firebase'; // Now Supabase powered
+import { useUser, useDoc, useAuth } from '@/lib/auth'; // Now Supabase powered
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader } from '@/components/ui/loader';
@@ -29,8 +29,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { updateDocumentNonBlocking } from '../../firebase/non-blocking-updates';
-import { reauthenticateAndChangePassword, deleteUserAccount } from '../../firebase/non-blocking-login';
+import { updateDocumentNonBlocking } from '@/lib/auth/non-blocking-updates';
+import { reauthenticateAndChangePassword, deleteUserAccount } from '@/lib/auth/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 

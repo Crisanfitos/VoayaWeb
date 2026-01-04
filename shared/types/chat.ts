@@ -1,7 +1,5 @@
-import { Timestamp } from 'firebase/firestore';
-
 export type ChatStatus = 'active' | 'completed' | 'archived';
-export type MessageRole = 'user' | 'assistant';
+export type MessageRole = 'user' | 'assistant' | 'system';
 export type ChatCategory = 'flights' | 'hotels' | 'experiences';
 
 export interface ChatMetadata {
@@ -18,11 +16,11 @@ export interface ChatMetadata {
 export interface Chat {
     id: string;
     userId: string | null;
-    createdAt: Timestamp;
+    createdAt: string; // ISO date string
     title: string;
     status: ChatStatus;
     categories: ChatCategory[];
-    lastMessageAt: Timestamp;
+    lastMessageAt: string; // ISO date string
     metadata: ChatMetadata;
 }
 
@@ -31,7 +29,7 @@ export interface Message {
     chatId: string;
     role: MessageRole;
     text: string;
-    createdAt: Timestamp;
+    createdAt: string; // ISO date string
     userId?: string | null;
 }
 

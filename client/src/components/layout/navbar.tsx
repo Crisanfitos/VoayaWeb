@@ -14,8 +14,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { Logo } from "../logo";
-import { useUser, useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
+import { useUser, useAuth } from "@/lib/auth";
 import { clearVoayaCookies } from "@/lib/cookies";
 
 const navLinks = [
@@ -38,11 +37,11 @@ export function Navbar() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     if (auth) {
       // Clear cookies before signing out
       clearVoayaCookies();
-      signOut(auth);
+      await auth.signOut();
     }
   };
 

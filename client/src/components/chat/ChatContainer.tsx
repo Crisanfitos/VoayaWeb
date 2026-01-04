@@ -1,28 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Chat, Message } from '@shared/types/chat';
-import {
-    collection,
-    query,
-    orderBy,
-    onSnapshot,
-    getFirestore,
-    doc,
-    DocumentData,
-    DocumentSnapshot
-} from 'firebase/firestore';
+import { Chat, Message } from '@shared/types/chat'; // Assuming shared types exist, or we define interface locally
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/supabase/client';
 
 // Use server API URL from env or default to localhost:3001
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
 
+// Local interface if shared types don't match exact db structure
+interface SupabaseMessage {
+    id: string;
+    contenido: string;
+    rol: 'user' | 'assistant' | 'system';
+    fecha_creacion: string;
+    [key: string]: any;
+}
+
 export default function ChatContainer({ chatId }: { chatId?: string }) {
+    // We map Supabase message structure to the component's expected Message interface
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
     const router = useRouter();
-    const db = getFirestore();
     const [localChatId, setLocalChatId] = useState<string | undefined>(chatId);
     const [chatStatus, setChatStatus] = useState<string | null>(null);
     const [chatMetadata, setChatMetadata] = useState<Record<string, any> | null>(null);
@@ -31,21 +31,58 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
         const cid = localChatId;
         if (!cid || !user) return;
 
-        // Suscribirse a los mensajes del chat
-        const messagesRef = collection(db, 'chats', cid, 'messages');
-        const q = query(messagesRef, orderBy('createdAt', 'asc'));
+        // Fetch initial messages
+        const fetchMessages = async () => {
+            const { data, error } = await supabase
+                .from('mensajes')
+                .select('*')
+                .eq('chat_id', cid)
+                .order('fecha_creacion', { ascending: true });
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const newMessages = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Message[];
+            if (data) {
+                const mappedMessages: Message[] = data.map((msg: SupabaseMessage) => ({
+                    id: msg.id,
+                    chatId: cid,
+                    text: msg.contenido,
+                    role: msg.rol,
+                    createdAt: msg.fecha_creacion,
+                    userId: msg.usuario_id
+                }));
+                setMessages(mappedMessages);
+            }
+        };
 
-            setMessages(newMessages);
-        });
+        fetchMessages();
 
-        // Limpiar suscripción al desmontar
-        return () => unsubscribe();
+        // Subscribe to new messages
+        const channel = supabase
+            .channel(`chat_messages:${cid}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'mensajes',
+                    filter: `chat_id=eq.${cid}`
+                },
+                (payload: any) => {
+                    const newMsg = payload.new as SupabaseMessage;
+                    const mappedMsg: Message = {
+                        id: newMsg.id,
+                        chatId: cid,
+                        text: newMsg.contenido,
+                        role: newMsg.rol,
+                        createdAt: newMsg.fecha_creacion,
+                        userId: newMsg.usuario_id
+                    };
+                    setMessages((prev) => [...prev, mappedMsg]);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [localChatId, user]);
 
     // Subscribe to chat document to read status and metadata
@@ -53,15 +90,42 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
         const cid = localChatId;
         if (!cid || !user) return;
 
-        const chatRef = doc(db, 'chats', cid);
-        const unsub = onSnapshot(chatRef, (snap) => {
-            if (!snap.exists()) return;
-            const data = snap.data() as DocumentData;
-            setChatStatus(data.status || null);
-            setChatMetadata(data.metadata || null);
-        });
+        // Fetch initial status
+        const fetchChatStatus = async () => {
+            const { data } = await supabase
+                .from('chats')
+                .select('estado, metadatos')
+                .eq('id', cid)
+                .single();
+            if (data) {
+                setChatStatus(data.estado);
+                setChatMetadata(data.metadatos);
+            }
+        };
+        fetchChatStatus();
 
-        return () => unsub();
+        // Subscribe to changes
+        const channel = supabase
+            .channel(`chat_status:${cid}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'chats',
+                    filter: `id=eq.${cid}`
+                },
+                (payload: any) => {
+                    const newData = payload.new as any;
+                    setChatStatus(newData.estado || null);
+                    setChatMetadata(newData.metadatos || null);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [localChatId, user]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -88,7 +152,7 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
                 } catch { }
             }
 
-            // Send message to server to be saved
+            // Send message to server to be saved (and processed by AI)
             await fetch(`${SERVER_URL}/api/chat/message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -98,7 +162,6 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
             setInputMessage('');
         } catch (error) {
             console.error('Error sending message:', error);
-            // TODO: Mostrar error al usuario
         } finally {
             setIsLoading(false);
         }

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '../../firebase';
+import { useUser } from '../../lib/auth';
 
 /**
  * If the user is authenticated, redirect to /plan.
