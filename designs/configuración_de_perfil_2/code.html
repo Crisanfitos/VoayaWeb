@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configuración de Perfil - Voaya</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#137fec",
+              "page-bg": "#f8fafc",
+              "card-bg": "#ffffff",
+              "stroke": "#e2e8f0",
+              "text-main": "#0f172a",
+              "text-secondary": "#64748b",
+              "input-bg": "#ffffff",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "full": "9999px"},
+            boxShadow: {
+                'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+            }
+          },
+        },
+      }
+    </script>
+<style>input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #137fec;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 0 0 4px rgba(19, 127, 236, 0.15);
+            transition: box-shadow 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 0 6px rgba(19, 127, 236, 0.25);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="font-display bg-page-bg text-text-main min-h-screen flex flex-col overflow-x-hidden">
+<header class="w-full border-b border-stroke bg-card-bg px-6 py-3 sticky top-0 z-50 shadow-sm">
+<div class="max-w-[1440px] mx-auto flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="size-8 text-primary">
+<svg class="w-full h-full" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 42.4379C4 42.4379 14.0962 36.0744 24 41.1692C35.0664 46.8624 44 42.2078 44 42.2078L44 7.01134C44 7.01134 35.068 11.6577 24.0031 5.96913C14.0971 0.876274 4 7.27094 4 7.27094L4 42.4379Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-text-main text-xl font-bold tracking-tight">Voaya</h2>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center justify-center size-10 rounded-xl bg-slate-50 border border-stroke text-text-secondary hover:text-primary hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center size-10 rounded-xl bg-slate-50 border border-stroke text-text-secondary hover:text-primary hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined">chat_bubble</span>
+</button>
+<div class="size-10 rounded-full bg-cover bg-center border-2 border-white shadow-sm ring-1 ring-slate-200" data-alt="User profile picture placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDDfVflS9dppDGfLKa7rg9lc032OboAFMo66U5HjhsNm_kGVn3tKjaYE6JJFe4orK9d-6_dTUpSq1zXq6SY48tk0JWjCtZxYjcO5z4L6NzJQRIE06jR4G2O0XGqquZ0xuwTUWgnjFS3UoxMiKQmSfsU3ABst_-OQ4VLCM1BUP5kTdrbrWyD5PhRuITGpFwwb99z_kv8rWAI1YIU6gzN5gfx0FVzbvu7m4YygbW_MzKCTk_Aez3GcPyJhSJAuKjk6YvB2ul7ct64pQ");'>
+</div>
+</div>
+</div>
+</header>
+<div class="flex flex-1 max-w-[1440px] mx-auto w-full">
+<aside class="hidden lg:flex w-72 flex-col gap-6 p-6 border-r border-stroke bg-card-bg min-h-[calc(100vh-65px)]">
+<div class="flex flex-col gap-1">
+<h1 class="text-text-main text-lg font-bold">Cuenta</h1>
+<p class="text-text-secondary text-sm">Gestionar ajustes</p>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-md shadow-primary/20 transition-all" href="#">
+<span class="material-symbols-outlined fill">person</span>
+<span class="text-sm font-semibold">Mi Perfil</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:bg-slate-50 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-105 transition-transform">security</span>
+<span class="text-sm font-medium">Seguridad</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:bg-slate-50 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-105 transition-transform">tune</span>
+<span class="text-sm font-medium">Preferencias de Viaje</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:bg-slate-50 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-105 transition-transform">notifications</span>
+<span class="text-sm font-medium">Notificaciones</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:bg-slate-50 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-105 transition-transform">credit_card</span>
+<span class="text-sm font-medium">Suscripción</span>
+</a>
+</nav>
+<div class="mt-auto">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary hover:bg-slate-50 hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined group-hover:scale-105 transition-transform">help</span>
+<span class="text-sm font-medium">Ayuda y Soporte</span>
+</a>
+</div>
+</aside>
+<main class="flex-1 p-6 lg:p-10 flex flex-col gap-8 max-w-4xl">
+<div class="flex flex-col gap-2">
+<h1 class="text-3xl lg:text-4xl font-black tracking-tight text-text-main">Configuración de Perfil</h1>
+<p class="text-text-secondary text-lg">Gestiona tu información personal y ajusta la IA de viaje.</p>
+</div>
+<div class="bg-card-bg rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 border border-stroke shadow-soft">
+<div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+<div class="size-24 rounded-full bg-cover bg-center border-4 border-white shadow-lg ring-1 ring-slate-100" data-alt="Close up portrait of a user" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuASsZIIuA0UeW47kW9htYkfIDIItSlEPBlvel7gyOjAYwmJa_jQzdn8xKUbzUXmxXM5bT9Grq8VtWbw1YO5biVEz1yK-yGh-xUee6CYkjnTD8EQ5v3U2Yg2pbfDLas-8T8XnMokFYqhbAJlSDoyY_fZ0SQ6XhfJdPns9i6z7PLLoBP0nqqKPzVNbv3iMtiHTEkQ68Ht-soN9f1yEpG4IUtvXRLUW8Ia04iaf6DwZzxjN-s9P3vfVlhBnxNkPY4301H4StEv-npF4Q");'>
+</div>
+<div class="flex flex-col">
+<h2 class="text-2xl font-bold text-text-main">Alex Rivera</h2>
+<div class="flex items-center gap-2 justify-center sm:justify-start mt-1">
+<span class="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded uppercase tracking-wide border border-primary/20">Viajero Pro</span>
+<span class="text-text-secondary text-sm">Miembro desde 2022</span>
+</div>
+</div>
+</div>
+<button class="bg-white hover:bg-slate-50 text-text-main px-6 py-2.5 rounded-lg text-sm font-bold transition-all border border-stroke shadow-sm hover:shadow-md hover:-translate-y-0.5">
+                    Cambiar Foto
+                </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="flex flex-col gap-6 md:col-span-2 lg:col-span-1">
+<div class="flex items-center gap-2 pb-2 border-b border-stroke">
+<span class="material-symbols-outlined text-primary">badge</span>
+<h3 class="text-lg font-bold text-text-main">Información Personal</h3>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-text-secondary">Nombre Completo</label>
+<input class="bg-input-bg border border-stroke focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-text-main placeholder-slate-400 outline-none transition-all shadow-sm" type="text" value="Alex Rivera"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-text-secondary">Correo Electrónico</label>
+<input class="bg-input-bg border border-stroke focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-text-main placeholder-slate-400 outline-none transition-all shadow-sm" type="email" value="alex.rivera@voaya.com"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-text-secondary">Bio de Viajero (Para la IA)</label>
+<textarea class="bg-input-bg border border-stroke focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-text-main placeholder-slate-400 outline-none transition-all resize-none shadow-sm" placeholder="Describe qué tipo de viajero eres..." rows="4">Me encanta descubrir cafeterías ocultas, museos de arte moderno y prefiero caminar la ciudad a tomar taxis.</textarea>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-6 md:col-span-2 lg:col-span-1">
+<div class="flex items-center justify-between pb-2 border-b border-stroke">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<h3 class="text-lg font-bold text-text-main">Ajustes de IA</h3>
+</div>
+</div>
+<div class="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-3 items-start shadow-sm">
+<span class="material-symbols-outlined text-primary text-xl mt-0.5 fill">lightbulb</span>
+<div>
+<p class="text-text-main font-bold text-sm">Consejo de Voaya AI</p>
+<p class="text-slate-600 text-xs mt-1 leading-relaxed">Notamos que disfrutas de climas cálidos. Ajustar tu preferencia hacia "Playa" mejorará tus recomendaciones en un 30%.</p>
+</div>
+</div>
+<div class="flex flex-col gap-6 mt-2 bg-white p-4 rounded-xl border border-stroke shadow-sm">
+<div class="flex flex-col gap-3">
+<div class="flex justify-between text-sm font-bold text-text-secondary">
+<span>Relax</span>
+<span>Aventura</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="75"/>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between text-sm font-bold text-text-secondary">
+<span>Económico</span>
+<span>Lujo</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="40"/>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between text-sm font-bold text-text-secondary">
+<span>Naturaleza</span>
+<span>Ciudad</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="60"/>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between text-sm font-bold text-text-secondary">
+<span>Planificado</span>
+<span>Espontáneo</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="20"/>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-6 md:col-span-2 bg-card-bg p-6 rounded-xl border border-stroke shadow-soft">
+<div class="flex items-center gap-2 pb-2 border-b border-stroke">
+<span class="material-symbols-outlined text-text-secondary">lock</span>
+<h3 class="text-lg font-bold text-text-main">Seguridad de la Cuenta</h3>
+</div>
+<div class="flex flex-col md:flex-row gap-8 justify-between items-start md:items-center">
+<div class="flex flex-col gap-1">
+<h4 class="text-text-main font-bold">Autenticación de dos factores (2FA)</h4>
+<p class="text-text-secondary text-sm">Añade una capa extra de seguridad a tu cuenta.</p>
+</div>
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
+<span class="ms-3 text-sm font-medium text-text-main">Activado</span>
+</label>
+</div>
+<div class="flex flex-col md:flex-row gap-4 w-full">
+<button class="flex-1 bg-white hover:bg-slate-50 text-text-main px-4 py-3 rounded-lg text-sm font-bold transition-all border border-stroke shadow-sm hover:shadow-md hover:border-slate-300">
+                            Cambiar Contraseña
+                         </button>
+<button class="flex-1 bg-white hover:bg-slate-50 text-text-main px-4 py-3 rounded-lg text-sm font-bold transition-all border border-stroke shadow-sm hover:shadow-md hover:border-slate-300">
+                            Dispositivos Conectados
+                         </button>
+</div>
+</div>
+</div>
+<div class="sticky bottom-0 bg-card-bg/95 backdrop-blur-sm border-t border-stroke py-4 -mx-6 px-6 lg:-mx-10 lg:px-10 mt-4 flex justify-end gap-4 z-40">
+<button class="px-6 py-2.5 rounded-lg text-sm font-bold text-text-secondary hover:text-text-main hover:bg-slate-100 transition-colors">
+                    Cancelar
+                </button>
+<button class="px-6 py-2.5 rounded-lg text-sm font-bold text-white bg-primary hover:bg-blue-600 shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                    Guardar Cambios
+                </button>
+</div>
+</main>
+</div>
+
+</body></html>

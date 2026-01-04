@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mis Viajes Programados - Voaya</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "primary-dark": "#0b63b8",
+                        "background-light": "#f8fafc",
+                        "surface-white": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        "soft": "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+                        "glow": "0 0 15px rgba(19, 127, 236, 0.3)"
+                    }
+                },
+            },
+        }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="bg-background-light text-slate-900 font-display overflow-x-hidden min-h-screen flex flex-col">
+<header class="sticky top-0 z-50 flex items-center justify-between border-b border-solid border-slate-200 bg-white/80 backdrop-blur-md px-6 py-3 lg:px-10 transition-all">
+<div class="flex items-center gap-4">
+<div class="size-9 flex items-center justify-center text-primary bg-blue-50 rounded-xl">
+<span class="material-symbols-outlined text-3xl">travel_explore</span>
+</div>
+<h2 class="text-slate-900 text-xl font-bold leading-tight tracking-[-0.015em]">Voaya</h2>
+</div>
+<nav class="hidden md:flex flex-1 justify-center gap-8">
+<a class="text-slate-500 hover:text-primary text-sm font-semibold transition-colors" href="#">Panel</a>
+<a class="text-slate-900 text-sm font-semibold" href="#">Viajes</a>
+<a class="text-slate-500 hover:text-primary text-sm font-semibold transition-colors" href="#">Comunidad</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="flex items-center justify-center gap-2 rounded-xl bg-primary h-10 px-5 text-white hover:bg-primary-dark transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="text-sm font-bold truncate hidden sm:block">Nuevo Viaje</span>
+</button>
+<div class="relative group cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-md" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC7W4lDV_G0noZ3wV7Fs_JqEJUBqyERhF9syiVsXp5s-R4Ibbqo98Jl_AugPcxJOLKCFoe47JMQAVosMi6y1b3dD7-lHI9P3mBW6zj0ChoS2cMUQ-Fn3oXCY3BUr9ywLJ-b-Jx9ME1rpVaIe79jUsWuPWLpCWIpZcl8coWmbsp8imn0TlPtzrtCfVa_8Rp67qxVMzWF5x4GmzGe5rJsPWgX0QHxVh3lUfEMSjgEeZ7zOKTCLB_sVu5jJJIDvP7TjxifF5phoLOHKQ");'>
+</div>
+<div class="absolute right-0 top-0 size-3 bg-green-500 rounded-full border-2 border-white"></div>
+</div>
+</div>
+</header>
+<main class="flex-1 flex justify-center py-8 px-4 sm:px-6 lg:px-8">
+<div class="flex flex-col max-w-[1024px] w-full gap-8">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<div class="flex flex-col gap-2">
+<h1 class="text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em] text-slate-900">Mis Viajes</h1>
+<p class="text-slate-500 text-base font-medium">Gestiona tus itinerarios creados con IA y tus aventuras pasadas.</p>
+</div>
+<div class="w-full md:w-auto md:min-w-[400px]">
+<div class="relative group shadow-soft rounded-xl">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+</div>
+<input class="block w-full pl-12 pr-14 py-3.5 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow outline-none font-medium" placeholder="¿A dónde quieres ir ahora?" type="text"/>
+<button class="absolute inset-y-0 right-0 pr-2 flex items-center">
+<div class="bg-blue-50 hover:bg-blue-100 p-2 rounded-lg text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</div>
+</button>
+</div>
+</div>
+</div>
+<div class="border-b border-slate-200">
+<div class="flex gap-8 overflow-x-auto no-scrollbar">
+<a class="relative flex flex-col items-center justify-center pb-3 pt-2 text-primary border-b-[3px] border-primary" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">Programados</p>
+</a>
+<a class="relative flex flex-col items-center justify-center pb-3 pt-2 text-slate-500 hover:text-slate-800 border-b-[3px] border-transparent transition-colors group" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">Borradores</p>
+<span class="absolute top-0 -right-2 flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+</a>
+<a class="relative flex flex-col items-center justify-center pb-3 pt-2 text-slate-500 hover:text-slate-800 border-b-[3px] border-transparent transition-colors" href="#">
+<p class="text-sm font-bold tracking-[0.015em]">Pasados</p>
+</a>
+</div>
+</div>
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<article class="group relative overflow-hidden rounded-2xl bg-white shadow-soft hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+<div class="absolute top-4 left-4 z-20">
+<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+<span class="size-1.5 rounded-full bg-white"></span>
+                            Confirmado
+                        </span>
+</div>
+<div class="absolute top-4 right-4 z-20">
+<button class="size-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 backdrop-blur-md transition-colors border border-white/20">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<div class="h-[280px] w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Beautiful street in Kyoto Japan with cherry blossoms" data-location="Kyoto, Japan" style='background-image: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuDuBbkehJy2YDdXgu3oBt8SXxMpCojJ4PnbBr5TeYxZ2DqCAjIXlyRHQ4wu8X0GK6LqfwHFxKunJtHGtw3n9UslSQM7RbmpNBZ6P339GDhPBEcHu2Fkgih-PCyb3lBjCbEz3c4g2o1Bwf232GAfYrdNDovJb8d2pAwoz_-mZ3nDvQOXvhV159YfNdu0xkOh97Ds06ylNaigtAzPAzslFDv6tsU3pecdYdmE-bK4gCaPMQ9vkmdKaSkmGMRIA8D54xNWRIrlDwh06A");'>
+</div>
+<div class="absolute bottom-0 left-0 w-full p-6 flex flex-col gap-3">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="text-2xl font-bold text-white mb-1 drop-shadow-md">Kyoto, Japón</h3>
+<div class="flex items-center gap-2 text-white/90 text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+<span>12 Oct - 20 Oct</span>
+<span class="w-1 h-1 rounded-full bg-white/60"></span>
+<span class="text-blue-200 font-bold bg-blue-900/30 px-2 py-0.5 rounded-md backdrop-blur-sm">En 12 días</span>
+</div>
+</div>
+</div>
+<button class="mt-2 w-full flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-sm font-bold text-primary hover:bg-blue-50 transition-colors shadow-sm">
+<span>Ver Itinerario</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</article>
+<article class="group relative overflow-hidden rounded-2xl bg-white shadow-soft hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+<div class="absolute top-4 left-4 z-20">
+<span class="inline-flex items-center gap-1.5 rounded-full bg-primary/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px] animate-spin">sync</span>
+                            IA Refinando...
+                        </span>
+</div>
+<div class="absolute top-4 right-4 z-20">
+<button class="size-8 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 backdrop-blur-md transition-colors border border-white/20">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+<div class="h-[280px] w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Beach scene in Tulum Mexico" data-location="Tulum, Mexico" style='background-image: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCRzA_GNSQiJVLE70PQcuztndxOdBe6mhgdvwOXE6W0tz3pdz1Q8D3Rn_mC3U7OZ3KyF-2FSTPG8nhI_0x2exDIS6KYnBgWJaAx-Zezbp6i4WMhkWt4lqA1EvbWZoFfxI2rKgrGbsuT_w5byA7bzUfj3-s6ITdQmUSe3l9dOhEZ-v8q7zUNlnry7hsvQ6wr9O7bJnwXl2a3rJnHFCHMjm1lyxFrZAC-KEOD1KSvco-MDFG2I52LaPylghCMTcZafTcy7p6TyhhNpg");'>
+</div>
+<div class="absolute bottom-0 left-0 w-full p-6 flex flex-col gap-3">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="text-2xl font-bold text-white mb-1 drop-shadow-md">Tulum, México</h3>
+<div class="flex items-center gap-2 text-white/90 text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+<span>05 Dic - 10 Dic</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3 mt-2">
+<button class="flex-1 flex items-center justify-center gap-2 rounded-lg bg-white/20 backdrop-blur-md py-3 text-sm font-bold text-white hover:bg-white/30 transition-colors border border-white/20">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>Preferencias</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold text-white hover:bg-primary-dark transition-colors shadow-sm">
+<span>Ver Estado</span>
+</button>
+</div>
+</div>
+</article>
+</section>
+<section class="flex flex-col gap-4 mt-6">
+<div class="flex items-center justify-between">
+<h2 class="text-xl font-bold text-slate-900">Historial Reciente</h2>
+<a class="text-sm font-bold text-primary hover:text-primary-dark transition-colors" href="#">Ver todos</a>
+</div>
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+<div class="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors rounded-t-2xl group cursor-pointer">
+<div class="h-16 w-20 rounded-lg bg-cover bg-center shrink-0 shadow-sm" data-alt="Eiffel Tower view in Paris" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAZDJ2EAjWX4JLIL_0G5mQTrMJi8taH6FWKCz-G7fmMhB7W_OsHcs2jQc386nrXCkpGrXnJBp7mmeq3ES43UxAdCahIZOBzxlgst_qq1J_CGO-MGbvscfZiVwfD2OTo3Umj86UC6V4rZYmSM2h63rjaxE0J511V3EixyxnRCSwxS8J1PpQA20zC7QWOop1pbr3r1Y4YJLxWGY4XF8XboMVWVfmttjpQlYbgz-lrSWlPeh_W8K0P71Zs2LKI-USBpX98yn8oPzN_tw");'>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-base font-bold text-slate-900 truncate">París, Francia</h4>
+<p class="text-sm text-slate-500 font-medium">10 Mar - 15 Mar, 2023</p>
+</div>
+<div class="hidden sm:flex items-center gap-2">
+<span class="inline-flex items-center rounded-md bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 ring-1 ring-inset ring-green-600/20">Completado</span>
+</div>
+<button class="p-2 text-slate-300 group-hover:text-primary transition-all group-hover:translate-x-1">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<div class="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors rounded-b-2xl group cursor-pointer">
+<div class="h-16 w-20 rounded-lg bg-cover bg-center shrink-0 shadow-sm" data-alt="Architecture in Barcelona Spain" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAu0VZoOlAXnuADENjF5naBj53vaka-plJtx8Pm8q8IDtY7j3T6YqUqVYDpmTMhZqjnvIz88-bCKk84EHulLEE0_ifuaYDscEH4iuom523zUCOyb6Ip0YWuSHOCUoD0SINQafySLa5A1uWxnlETuD3MDBXthpCaTahlBy5ovxJ090fElfHQ28hVC2Bgy8WA6wiZSlll62F1uG_evEOsDA4PXixQBrzVSzILzQTzfM7cKM4dcLoHbqMrbEDPr0uED-Tsxm49pnh5Ow");'>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-base font-bold text-slate-900 truncate">Barcelona, España</h4>
+<p class="text-sm text-slate-500 font-medium">05 Ene - 12 Ene, 2023</p>
+</div>
+<div class="hidden sm:flex items-center gap-2">
+<span class="inline-flex items-center rounded-md bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 ring-1 ring-inset ring-green-600/20">Completado</span>
+</div>
+<button class="p-2 text-slate-300 group-hover:text-primary transition-all group-hover:translate-x-1">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 z-40 md:hidden">
+<button class="flex items-center justify-center size-14 rounded-full bg-primary text-white shadow-lg shadow-blue-500/40 hover:scale-105 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-2xl">auto_awesome</span>
+</button>
+</div>
+
+</body></html>

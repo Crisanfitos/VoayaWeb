@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mis Chats de Viaje - Voaya</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Noto+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "surface-dark": "#1C252E",
+                        "surface-light": "#FFFFFF"
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#111418] dark:text-white antialiased min-h-screen flex flex-col">
+<!-- Top Navigation -->
+<header class="border-b border-solid border-[#e5e7eb] dark:border-[#283039] px-4 md:px-10 py-3 bg-surface-light dark:bg-[#111418] sticky top-0 z-50">
+<div class="flex items-center justify-between whitespace-nowrap max-w-[1440px] mx-auto w-full">
+<div class="flex items-center gap-4 text-[#111418] dark:text-white">
+<div class="size-8 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-size: 32px;">travel_explore</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-[-0.015em]">Voaya</h2>
+</div>
+<!-- Desktop Menu -->
+<div class="hidden md:flex flex-1 justify-end gap-8 items-center">
+<nav class="flex items-center gap-9">
+<a class="text-[#111418] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Mis Viajes</a>
+<a class="text-[#637588] dark:text-[#9dabb9] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Explorar</a>
+<a class="text-[#637588] dark:text-[#9dabb9] text-sm font-medium leading-normal hover:text-primary transition-colors" href="#">Favoritos</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors shadow-lg shadow-blue-500/20">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="truncate">Nuevo Viaje</span>
+</span>
+</button>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-10 border-2 border-white dark:border-[#283039]" data-alt="User profile picture showing a smiling person" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsMnD_xY1ovSpyLBCs090FAiSd_9oYZelR0MW894-EIJlux7SKzHRaC9ShLhWyoaMlEbvFc5ZSNF9NTUGFxv025LWh6W7qyf6zRsTpKpjsP0rq6fSkHc0FgKU4hASWMXXqYEMd7VUAoZMFTu1Ij_Fgxb_PR5ceTbzWXHrOxF5_wyI31mV7uOQlYiONrqQQTEjvhHXozHdDJ4peiLRY1MAG4BeB-euaFXxlJq8qt1h1MrUR-IWxO4zC1nAuU2YvJvXMZ1eHjm9Y4w");'>
+</div>
+</div>
+</div>
+<!-- Mobile Menu Icon -->
+<button class="md:hidden text-[#111418] dark:text-white">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full px-4 md:px-10 py-6 md:py-8 flex justify-center">
+<div class="w-full max-w-[1200px] flex flex-col gap-8">
+<!-- Heading & Welcome -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="flex flex-col gap-3 max-w-2xl">
+<h1 class="text-[#111418] dark:text-white text-3xl md:text-4xl font-black leading-tight tracking-[-0.033em]">Mis Chats de Viaje</h1>
+<p class="text-[#637588] dark:text-[#9dabb9] text-base font-normal leading-normal">
+                        Hola, Alex. Aquí tienes tu historial de conversaciones. Retoma la planificación de tus próximas aventuras donde la dejaste.
+                    </p>
+</div>
+<!-- Search Bar -->
+<div class="w-full md:w-auto md:min-w-[320px]">
+<div class="relative flex items-center h-12 w-full rounded-xl bg-surface-light dark:bg-[#283039] focus-within:ring-2 focus-within:ring-primary/50 overflow-hidden shadow-sm">
+<div class="pl-4 pr-2 text-[#9dabb9] flex items-center justify-center">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-[#111418] dark:text-white placeholder:text-[#9dabb9] text-base font-normal focus:ring-0 h-full py-0" placeholder="Buscar por destino o fecha..."/>
+</div>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex gap-3 flex-wrap items-center overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#111418] dark:bg-white text-white dark:text-[#111418] px-5 transition-colors">
+<span class="text-sm font-bold">Todos</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#e5e7eb] dark:bg-[#283039] hover:bg-[#d1d5db] dark:hover:bg-[#323b46] px-5 transition-colors">
+<span class="text-[#111418] dark:text-white text-sm font-medium">Próximos</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#e5e7eb] dark:bg-[#283039] hover:bg-[#d1d5db] dark:hover:bg-[#323b46] px-5 transition-colors">
+<span class="text-[#111418] dark:text-white text-sm font-medium">Completados</span>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl bg-[#e5e7eb] dark:bg-[#283039] hover:bg-[#d1d5db] dark:hover:bg-[#323b46] px-5 transition-colors">
+<span class="text-[#111418] dark:text-white text-sm font-medium">Favoritos</span>
+</button>
+</div>
+<!-- Chat Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+<!-- New Trip Card -->
+<div class="group flex flex-col h-full min-h-[300px] rounded-2xl border-2 border-dashed border-[#d1d5db] dark:border-[#283039] bg-transparent hover:border-primary hover:bg-primary/5 transition-all cursor-pointer items-center justify-center gap-4 text-center p-6">
+<div class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl">add_location_alt</span>
+</div>
+<div>
+<h3 class="text-lg font-bold text-[#111418] dark:text-white">Nuevo Destino</h3>
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] mt-1">Comienza una nueva conversación</p>
+</div>
+</div>
+<!-- Card 1 -->
+<div class="group relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all border border-transparent hover:border-primary/30 cursor-pointer">
+<div class="relative w-full aspect-[4/3] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Beautiful view of the Eiffel Tower in Paris at sunset" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCxnT1C81kbQq8ekEkBJO-kRScRVROOb1K5QME9qedA_AqbtPahYHluPSRLK5cnMuwcXtJPmkQsK00LZkdrkI_1n5Kf2nUJrpLcw-QUWgctnlz7mASArvYj4_gncFWjwoo4dHPh6PVwW3I5DQBdSKtXH-wJz_Ihali3rr74rwGDn0N-4c-TrnmBc1I7D7G8F0DptDsoSfPcZfk_LUwD6nHG4enrpg5qiYdH3jh5wKZr3-Hjyos5MivCsRlr6okE-XOL-w5wXSLR0A");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80"></div>
+<!-- Status Badge -->
+<div class="absolute top-3 right-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary text-white shadow-sm backdrop-blur-md">
+                                Planificación
+                            </span>
+</div>
+<!-- Content Overlay on Image -->
+<div class="absolute bottom-0 left-0 p-4 w-full">
+<h3 class="text-white text-xl font-bold leading-tight">Escapada a París</h3>
+<div class="flex items-center gap-1 text-gray-200 text-xs mt-1">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                                14 Feb - 20 Feb
+                            </div>
+</div>
+</div>
+<div class="p-4 pt-3 flex flex-col gap-2">
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] line-clamp-2 leading-relaxed">
+                            Buscando hoteles cerca de Montmartre y reservas para cena romántica...
+                        </p>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-[#e5e7eb] dark:border-[#283039]">
+<span class="text-xs text-[#9dabb9] font-medium">Editado hace 2h</span>
+<button class="size-8 rounded-full hover:bg-[#e5e7eb] dark:hover:bg-[#283039] flex items-center justify-center text-[#637588] dark:text-[#9dabb9] transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="group relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all border border-transparent hover:border-primary/30 cursor-pointer">
+<div class="relative w-full aspect-[4/3] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Turquoise waters and white sand beaches of Tulum Mexico" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBs3em8pMD9xnp5ALMitoLIO-sItkFLdCtLUYK0A0wpoWOxYEYFPJePc5LarX4nZSY0RbEyjWvDCsZmctzAPpuAUt_S50y7JDLP7FqLLG7kNnfFBHozH6xtzJOi550-oUXMAVa3uhG3GdIqgrpW_v95tVRUpDkv9dcE2Gaxu7TJSM4saf3qUuv9YxVmRTRdJl9TO7enK76H7znvKTzX8wrqg0ZuUrNTKXT4m7y2KfQOy05bomtt2U0kAurWa_kcqOgbV_7HwB2JRQ");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80"></div>
+<div class="absolute top-3 right-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/90 text-white shadow-sm backdrop-blur-md">
+                                Vuelos Listos
+                            </span>
+</div>
+<div class="absolute bottom-0 left-0 p-4 w-full">
+<h3 class="text-white text-xl font-bold leading-tight">Relax en México</h3>
+<div class="flex items-center gap-1 text-gray-200 text-xs mt-1">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                                10 Mar - 18 Mar
+                            </div>
+</div>
+</div>
+<div class="p-4 pt-3 flex flex-col gap-2">
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] line-clamp-2 leading-relaxed">
+                            Itinerario de playa y visita a las ruinas mayas confirmados.
+                        </p>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-[#e5e7eb] dark:border-[#283039]">
+<span class="text-xs text-[#9dabb9] font-medium">Ayer</span>
+<button class="size-8 rounded-full hover:bg-[#e5e7eb] dark:hover:bg-[#283039] flex items-center justify-center text-[#637588] dark:text-[#9dabb9] transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="group relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all border border-transparent hover:border-primary/30 cursor-pointer">
+<div class="relative w-full aspect-[4/3] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Traditional Japanese street in Kyoto with cherry blossoms" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAXiGZr6GAwQVW_uicahLGo5kGFaq1X4BLbw19QhqfcwY2Z9_pST0aWKSqZMzq1Rp0xYmKu_lN6X-J8wumNrDAWa8Nj0bIZ2z1Ve5am26nxlNMOYFR6edjus2M35EboQXonoH4f8hmDtVt1KtG4SigqME3jgWWcNQgpXKDARepvxKNhWRcOUdOnhU3KJqoybzZzeZZI-_dt-1d0S0BwrrI976-QJuCbqdhAE6UMvbQ57PYbqFko_mTdrW_Y4DzbmxTC8LlCyAdG0A");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80"></div>
+<div class="absolute top-3 right-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-500/80 text-white shadow-sm backdrop-blur-md">
+                                Borrador
+                            </span>
+</div>
+<div class="absolute bottom-0 left-0 p-4 w-full">
+<h3 class="text-white text-xl font-bold leading-tight">Tour por Japón</h3>
+<div class="flex items-center gap-1 text-gray-200 text-xs mt-1">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                                05 Abr - 20 Abr
+                            </div>
+</div>
+</div>
+<div class="p-4 pt-3 flex flex-col gap-2">
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] line-clamp-2 leading-relaxed">
+                            Explorando rutas de tren bala y ryokans en Kyoto.
+                        </p>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-[#e5e7eb] dark:border-[#283039]">
+<span class="text-xs text-[#9dabb9] font-medium">Hace 3 días</span>
+<button class="size-8 rounded-full hover:bg-[#e5e7eb] dark:hover:bg-[#283039] flex items-center justify-center text-[#637588] dark:text-[#9dabb9] transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="group relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all border border-transparent hover:border-primary/30 cursor-pointer">
+<div class="relative w-full aspect-[4/3] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Dramatic mountain landscape in Patagonia with snow" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBp5v9-My2m2wdFgwnqahUlwkvCAThgL-2zKnCLS3vsLpUDZwa0VPPszodKzF80iJ7iKhjXKE_UlQAU6cxo3Vq9dChsG6657EW1MvTUbbKnKTWyohPNoD0js3yGMz0wE_7zuAnrqdPUYjxXsd8oP7-Qo8VelfU56fJX4e5Zkt02412dVYtkNb_77OHAPbpapHNPETPTyVp1g4fBOwuhWvyyFyQ8P6KgFL8awOQEf_DpXPNV7xwZmxXezIBieXKZaaDwvYQ8xr9VHg");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80"></div>
+<div class="absolute top-3 right-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/90 text-white shadow-sm backdrop-blur-md">
+                                Completado
+                            </span>
+</div>
+<div class="absolute bottom-0 left-0 p-4 w-full">
+<h3 class="text-white text-xl font-bold leading-tight">Patagonia</h3>
+<div class="flex items-center gap-1 text-gray-200 text-xs mt-1">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                                12 Nov - 25 Nov
+                            </div>
+</div>
+</div>
+<div class="p-4 pt-3 flex flex-col gap-2">
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] line-clamp-2 leading-relaxed">
+                            Resumen del viaje y fotos subidas al álbum compartido.
+                        </p>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-[#e5e7eb] dark:border-[#283039]">
+<span class="text-xs text-[#9dabb9] font-medium">Nov 2023</span>
+<button class="size-8 rounded-full hover:bg-[#e5e7eb] dark:hover:bg-[#283039] flex items-center justify-center text-[#637588] dark:text-[#9dabb9] transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="group relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all border border-transparent hover:border-primary/30 cursor-pointer">
+<div class="relative w-full aspect-[4/3] overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" data-alt="Skyscrapers in New York City during sunset" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuABIqWRdR_J_KSa7vavcSqZL7S4R0gGmSPjgYE_vDCQpV1waFsa2ISF20BIk6ax0XWFGpUOAKv1qjiTFIxcSyF8EAcvEQKbQMww60fCUNCR3zpbyinHWugvhe9bZBezMcdqs1q0go855MKloPEMAfrTZBJzFYrG2kPYP3MVWVAXHaZzqbzbDhYkgn4Ysiwn0NyMlLqyupjcVQITAg2IwkOBmtnTOy6BC0_jrGklsWyTr_MKSnCmAX4aJG2-5U9YuN0dQ5YDR1Mrhw");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80"></div>
+<div class="absolute top-3 right-3">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/90 text-white shadow-sm backdrop-blur-md">
+                                Favorito
+                            </span>
+</div>
+<div class="absolute bottom-0 left-0 p-4 w-full">
+<h3 class="text-white text-xl font-bold leading-tight">Nueva York</h3>
+<div class="flex items-center gap-1 text-gray-200 text-xs mt-1">
+<span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                                Dic 01 - Dic 08
+                            </div>
+</div>
+</div>
+<div class="p-4 pt-3 flex flex-col gap-2">
+<p class="text-sm text-[#637588] dark:text-[#9dabb9] line-clamp-2 leading-relaxed">
+                            Compras navideñas y entradas para Broadway.
+                        </p>
+<div class="flex items-center justify-between mt-2 pt-3 border-t border-[#e5e7eb] dark:border-[#283039]">
+<span class="text-xs text-[#9dabb9] font-medium">Hace 1 mes</span>
+<button class="size-8 rounded-full hover:bg-[#e5e7eb] dark:hover:bg-[#283039] flex items-center justify-center text-[#637588] dark:text-[#9dabb9] transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

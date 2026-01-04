@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Voaya - Viajes con IA</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #101922;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #283039;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b4754;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#111418] dark:text-white font-display overflow-x-hidden antialiased selection:bg-primary selection:text-white">
+<div class="relative flex flex-col w-full min-h-screen">
+<!-- Top Navigation -->
+<header class="sticky top-0 z-50 w-full border-b border-solid border-[#e5e7eb] dark:border-[#283039] bg-white/80 dark:bg-[#101922]/90 backdrop-blur-md">
+<div class="max-w-[1280px] mx-auto px-4 sm:px-10 h-16 sm:h-20 flex items-center justify-between">
+<!-- Logo -->
+<div class="flex items-center gap-3 cursor-pointer">
+<div class="text-primary size-8 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">flight_takeoff</span>
+</div>
+<h2 class="text-[#111418] dark:text-white text-xl font-bold tracking-tight">Voaya</h2>
+</div>
+<!-- Desktop Nav -->
+<nav class="hidden md:flex flex-1 justify-center gap-8">
+<a class="text-[#111418] dark:text-white text-sm font-medium hover:text-primary transition-colors" href="#">Cómo funciona</a>
+<a class="text-[#111418] dark:text-white text-sm font-medium hover:text-primary transition-colors" href="#">Características</a>
+<a class="text-[#111418] dark:text-white text-sm font-medium hover:text-primary transition-colors" href="#">Reseñas</a>
+<a class="text-[#111418] dark:text-white text-sm font-medium hover:text-primary transition-colors" href="#">Nosotros</a>
+</nav>
+<!-- Actions -->
+<div class="flex gap-3">
+<button class="hidden sm:flex h-10 px-4 items-center justify-center rounded-xl bg-transparent border border-[#e5e7eb] dark:border-[#3b4754] text-[#111418] dark:text-white text-sm font-bold hover:bg-gray-100 dark:hover:bg-[#283039] transition-colors">
+<span class="truncate">Iniciar Sesión</span>
+</button>
+<button class="flex h-10 px-4 items-center justify-center rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold shadow-lg shadow-primary/20 transition-all transform hover:scale-105">
+<span class="truncate">Planificar Viaje</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1">
+<!-- Hero Section -->
+<section class="relative w-full">
+<div class="max-w-[1280px] mx-auto px-4 sm:px-10 py-8 sm:py-12 lg:py-20">
+<div class="rounded-3xl overflow-hidden relative min-h-[560px] flex flex-col items-center justify-center p-6 sm:p-12 text-center isolate shadow-2xl shadow-black/50">
+<!-- Background Image -->
+<div class="absolute inset-0 z-[-1] bg-cover bg-center" data-alt="Stunning mountain landscape with lake during sunset" style='background-image: linear-gradient(rgba(16, 25, 34, 0.4) 0%, rgba(16, 25, 34, 0.8) 100%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuBRd8jWiill1rUkhWq9tyiGdRtKzyj0WQ9NXPT8NBnDY6n-qdKzwc5yzUrlprRtT-NdzSj6bB7DJrfUKzkdRldvoJjGKK7_RQKirN_mH-AwRl1YdiSNyJ6qdddPA56VIVlkGFV9IMKkTiF6qa8qMuQsG3REQ3XKErgOtPqs1oaRUnNxgODH93FqfMKPOl6oVKoCdoJnhJ-2s1UO_yO4AqRUt7sW7FgWBUmqgtay5bucU_BhQA-5lMoUQ-XzOUkq0n0WeKAQeyz8sA");'>
+</div>
+<!-- Content -->
+<div class="flex flex-col gap-6 max-w-3xl mx-auto items-center animate-fade-in-up">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-xs font-medium text-white mb-2">
+<span class="material-symbols-outlined text-sm text-primary">auto_awesome</span>
+                                Potenciado por Inteligencia Artificial
+                            </span>
+<h1 class="text-white text-4xl sm:text-5xl lg:text-7xl font-black leading-[1.1] tracking-tight drop-shadow-sm">
+                                Descubre el mundo, <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">curado por IA</span>
+</h1>
+<p class="text-gray-200 text-lg sm:text-xl font-normal max-w-2xl leading-relaxed drop-shadow-sm">
+                                Voaya crea itinerarios personalizados en segundos basados en tu estilo de viaje único. Deja de buscar y empieza a viajar.
+                            </p>
+<!-- Search Bar -->
+<label class="flex flex-col w-full max-w-lg mt-6 group">
+<div class="flex w-full items-center h-14 sm:h-16 rounded-2xl bg-[#1c2127]/90 border border-[#3b4754] focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all overflow-hidden backdrop-blur-md shadow-xl">
+<div class="pl-4 sm:pl-6 text-[#9dabb9]">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-white placeholder:text-[#9dabb9] focus:ring-0 px-4 text-base sm:text-lg" placeholder="¿A dónde quieres ir?" value=""/>
+<div class="pr-2">
+<button class="h-10 sm:h-12 px-4 sm:px-6 rounded-xl bg-primary hover:bg-blue-600 text-white text-sm sm:text-base font-bold transition-colors">
+                                            Viajar
+                                        </button>
+</div>
+</div>
+</label>
+<!-- Social Proof -->
+<div class="flex items-center gap-4 mt-8 opacity-80">
+<div class="flex -space-x-3">
+<img alt="User avatar" class="w-8 h-8 rounded-full border-2 border-[#101922]" data-alt="Portrait of a smiling young woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCG9Yhk_Fbak_8dtFyns5wq4j6FUne-KYqCFP83grXGaf6vnZ6kOPR1W37YRQX-tnse31vDbQ2W7IPfdxdjx9UfDN_2FE79CWF2l3EA8pEkPn7LHEDz4EQDvG9X5Akf59GcFX5tWnMCnkSDhpsc0Z1S02paKVSQrELWGXxzxo2mi9e7wlznl2BxPOe1iWgMRBLlZ_Ag4uw-em64Td9jR1Qjprtf6qD6U_q9E06nbQs5G_y7MdncqJZ45dswVlM2yBRUNU3QCrVnyg"/>
+<img alt="User avatar" class="w-8 h-8 rounded-full border-2 border-[#101922]" data-alt="Portrait of a young man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlwBsWkl_VdBww8w_snxzIRPNjPU_Yndbj5E0sPdNSM_W87OacpOEsLJB6ByNqEY_v4SI8Y3w5hlmOhwInxry45KlIzYfuP_3jRDzbT--_ZlxCN8nKTciZh0DeGa-qs1qBTXAMitYFyuhA5-DC_PjIvP9pWs8gAxbprH9Re-DAXBC4yu9LpOg9ZEjgf7oL0gnaMVxwfPYNV_LOPetJfxsfh5BN_2AtLWmsD85aNRPnXLhz2bOhQBUtfGTVhDxC7S0geiXkA3VleA"/>
+<img alt="User avatar" class="w-8 h-8 rounded-full border-2 border-[#101922]" data-alt="Portrait of a woman" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCQInLbS38darqSHr-DgV-imLImmZWGezblGfcMBnF4GPakuHnPwL0pXeSCdVrt0BGuhRV5jVgm8_A9zCiQxL2oWCzxSSwTv2agFy9shbdvrnZ7VhJnho-ryyhsnPd_Y2O03Ad1pHSToB-xHLwcGZkZ9OJb8G5Yg3ufNosgUaI6JLrQbxzA5lbmgtb2VivQsViz_ZZtR2TAZ16KsHpCQU_GyWZvS7kTEzsOmJEZCbglT9FoQEDN9QqHkeXdZ2K__5JSCZ_fjjtWQ"/>
+</div>
+<p class="text-sm text-white font-medium">+10,000 viajeros felices</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="py-16 sm:py-24 bg-background-light dark:bg-background-dark">
+<div class="max-w-[1024px] mx-auto px-4 sm:px-10">
+<div class="flex flex-col md:flex-row gap-12 items-start justify-between mb-16">
+<div class="flex flex-col gap-4 max-w-xl">
+<h2 class="text-[#111418] dark:text-white text-3xl sm:text-4xl font-bold leading-tight">
+                                ¿Por qué planificar con Voaya?
+                            </h2>
+<p class="text-gray-600 dark:text-gray-400 text-lg">
+                                Experimenta el futuro de la planificación de viajes con nuestro asistente inteligente que aprende de ti.
+                            </p>
+</div>
+<button class="shrink-0 h-12 px-6 rounded-xl bg-transparent border border-gray-300 dark:border-[#3b4754] text-[#111418] dark:text-white font-bold hover:bg-gray-100 dark:hover:bg-[#1c2127] transition-colors flex items-center gap-2">
+<span>Conocer más sobre nuestra IA</span>
+<span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+<!-- Feature 1 -->
+<div class="group flex flex-col gap-4 rounded-2xl border border-gray-200 dark:border-[#3b4754] bg-white dark:bg-[#1c2127] p-6 hover:border-primary/50 transition-all hover:shadow-lg dark:hover:shadow-primary/5">
+<div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">auto_awesome</span>
+</div>
+<div>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Itinerarios Inteligentes</h3>
+<p class="text-gray-600 dark:text-[#9dabb9] text-sm leading-relaxed">
+                                    Planes día a día hechos a medida que se adaptan a tu ritmo, preferencias y tiempos de viaje.
+                                </p>
+</div>
+</div>
+<!-- Feature 2 -->
+<div class="group flex flex-col gap-4 rounded-2xl border border-gray-200 dark:border-[#3b4754] bg-white dark:bg-[#1c2127] p-6 hover:border-primary/50 transition-all hover:shadow-lg dark:hover:shadow-primary/5">
+<div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">attach_money</span>
+</div>
+<div>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Optimización de Presupuesto</h3>
+<p class="text-gray-600 dark:text-[#9dabb9] text-sm leading-relaxed">
+                                    Saca el máximo partido a tu dinero con seguimiento de precios en tiempo real y ofertas exclusivas.
+                                </p>
+</div>
+</div>
+<!-- Feature 3 -->
+<div class="group flex flex-col gap-4 rounded-2xl border border-gray-200 dark:border-[#3b4754] bg-white dark:bg-[#1c2127] p-6 hover:border-primary/50 transition-all hover:shadow-lg dark:hover:shadow-primary/5">
+<div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-2xl">location_on</span>
+</div>
+<div>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Joyas Ocultas</h3>
+<p class="text-gray-600 dark:text-[#9dabb9] text-sm leading-relaxed">
+                                    Descubre secretos locales y lugares auténticos que no aparecen en las guías estándar.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Map & Timeline Section (Split Layout) -->
+<section class="py-12 bg-white dark:bg-[#151c24]">
+<div class="max-w-[1280px] mx-auto px-4 sm:px-10">
+<div class="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+<!-- Timeline Content -->
+<div class="order-2 lg:order-1">
+<h2 class="text-3xl font-bold text-[#111418] dark:text-white mb-8">Cómo funciona Voaya</h2>
+<div class="grid grid-cols-[48px_1fr] gap-x-4">
+<!-- Step 1 -->
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-[#1380ec] text-white flex items-center justify-center shadow-lg shadow-primary/30 z-10">
+<span class="material-symbols-outlined text-xl">edit_note</span>
+</div>
+<div class="w-[2px] bg-gray-200 dark:bg-[#3b4754] h-full min-h-[60px] my-2"></div>
+</div>
+<div class="pb-10 pt-1">
+<p class="text-primary text-sm font-bold tracking-wider uppercase mb-1">Paso 1</p>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Comparte tu Sueño</h3>
+<p class="text-gray-600 dark:text-[#9dabb9]">Cuéntanos qué te gusta. ¿Playa o montaña? ¿Lujo o aventura? Nuestro chat intuitivo te entiende.</p>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-[#1c2127] border border-[#3b4754] text-gray-400 dark:text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-xl">psychology</span>
+</div>
+<div class="w-[2px] bg-gray-200 dark:bg-[#3b4754] h-full min-h-[60px] my-2"></div>
+</div>
+<div class="pb-10 pt-1">
+<p class="text-gray-500 text-sm font-bold tracking-wider uppercase mb-1">Paso 2</p>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Procesamiento con IA</h3>
+<p class="text-gray-600 dark:text-[#9dabb9]">Nuestros algoritmos analizan millones de puntos de datos, reseñas y precios para construir tu viaje ideal.</p>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-[#1c2127] border border-[#3b4754] text-gray-400 dark:text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-xl">map</span>
+</div>
+</div>
+<div class="pt-1">
+<p class="text-gray-500 text-sm font-bold tracking-wider uppercase mb-1">Paso 3</p>
+<h3 class="text-[#111418] dark:text-white text-xl font-bold mb-2">Tu Itinerario Perfecto</h3>
+<p class="text-gray-600 dark:text-[#9dabb9]">Recibe una guía completa con reservas, mapas offline y recomendaciones personalizadas.</p>
+</div>
+</div>
+</div>
+<!-- Interactive Map Visual -->
+<div class="order-1 lg:order-2 h-full min-h-[400px] flex flex-col">
+<div class="relative flex-1 rounded-3xl overflow-hidden bg-[#1c2127] shadow-2xl border border-[#3b4754]">
+<!-- Map Image -->
+<div class="absolute inset-0 bg-cover bg-center transition-transform hover:scale-105 duration-700" data-alt="Digital map visualization of Europe with connecting flight paths" data-location="Europe Map View" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBVGBgD1OkEh4wOfZXrIPX64gmZupyjBb6Uj7H-TcFECEsTcyZrXOOJBQ2M0w8o7CkmOFJ_QmBqTcr568CrMAL_mx-TreLSa6H9-aFnLLYKtLKnTqna7dISYXmTK7s44WI3y22TSZJfca-JnKCcHRYgVts--CA8Nl-l867KQJ4LlQCfPhJ12FypZV5RWafmSKidzu22WZlUlIfKchEdLD3G-gGvW_iT3QUKWa-GsNYEU_0YdPrOANfXVu5zgqDp4n-BkPl-JJonDA");'>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-[#101922] via-transparent to-transparent opacity-80"></div>
+<!-- Overlay UI -->
+<div class="absolute top-6 left-6 right-6 flex items-center gap-3">
+<div class="flex-1 bg-[#1c2127]/90 backdrop-blur border border-[#3b4754] rounded-xl h-12 flex items-center px-4 shadow-lg">
+<span class="material-symbols-outlined text-[#9dabb9]">search</span>
+<span class="ml-3 text-white text-sm">Explorar rutas populares...</span>
+</div>
+</div>
+<div class="absolute bottom-6 right-6 flex flex-col gap-2">
+<button class="size-10 rounded-xl bg-white dark:bg-[#1c2127] text-[#111418] dark:text-white shadow-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-[#283039]">
+<span class="material-symbols-outlined">near_me</span>
+</button>
+<div class="flex flex-col rounded-xl bg-white dark:bg-[#1c2127] shadow-lg overflow-hidden">
+<button class="size-10 flex items-center justify-center text-[#111418] dark:text-white hover:bg-gray-100 dark:hover:bg-[#283039] border-b border-gray-100 dark:border-[#3b4754]">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="size-10 flex items-center justify-center text-[#111418] dark:text-white hover:bg-gray-100 dark:hover:bg-[#283039]">
+<span class="material-symbols-outlined">remove</span>
+</button>
+</div>
+</div>
+<!-- Floating Pins -->
+<div class="absolute top-1/3 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce duration-[2000ms]">
+<div class="px-3 py-1.5 bg-white rounded-lg shadow-xl text-xs font-bold text-gray-900 mb-2">París, 4 días</div>
+<span class="material-symbols-outlined text-primary text-4xl drop-shadow-lg" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-20 relative overflow-hidden">
+<div class="absolute inset-0 bg-primary/10"></div>
+<div class="max-w-[800px] mx-auto px-6 text-center relative z-10">
+<h2 class="text-3xl sm:text-5xl font-black text-[#111418] dark:text-white mb-6 tracking-tight">
+                        ¿Listo para tu próxima aventura?
+                    </h2>
+<p class="text-lg text-gray-600 dark:text-gray-300 mb-10 max-w-2xl mx-auto">
+                        Únete a miles de viajeros que están descubriendo el mundo de una manera más inteligente.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<button class="h-14 px-8 rounded-2xl bg-primary hover:bg-blue-600 text-white text-lg font-bold shadow-xl shadow-primary/25 transition-all transform hover:scale-105">
+                            Empezar Gratis
+                        </button>
+<button class="h-14 px-8 rounded-2xl bg-white dark:bg-[#1c2127] border border-gray-200 dark:border-[#3b4754] text-[#111418] dark:text-white text-lg font-bold hover:bg-gray-50 dark:hover:bg-[#283039] transition-colors">
+                            Ver Demo
+                        </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white dark:bg-[#101922] border-t border-gray-200 dark:border-[#283039] py-12 px-4 sm:px-10">
+<div class="max-w-[1280px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+<div class="col-span-2 md:col-span-1 flex flex-col gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl">flight_takeoff</span>
+<span class="text-xl font-bold dark:text-white">Voaya</span>
+</div>
+<p class="text-sm text-gray-500 dark:text-[#9dabb9]">
+                        Tu compañero de viaje inteligente. Planifica, reserva y explora con el poder de la IA.
+                    </p>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="text-sm font-bold uppercase tracking-wider text-[#111418] dark:text-white">Producto</h4>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Características</a>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Precios</a>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">App Móvil</a>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="text-sm font-bold uppercase tracking-wider text-[#111418] dark:text-white">Compañía</h4>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Sobre Nosotros</a>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Blog</a>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Contacto</a>
+</div>
+<div class="flex flex-col gap-3">
+<h4 class="text-sm font-bold uppercase tracking-wider text-[#111418] dark:text-white">Legal</h4>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Privacidad</a>
+<a class="text-sm text-gray-500 dark:text-[#9dabb9] hover:text-primary" href="#">Términos</a>
+<div class="flex gap-4 mt-2">
+<a class="text-gray-400 hover:text-white transition-colors" href="#">
+<span class="sr-only">Twitter</span>
+<!-- Mock Icon -->
+<div class="size-5 bg-current rounded-sm opacity-50"></div>
+</a>
+<a class="text-gray-400 hover:text-white transition-colors" href="#">
+<span class="sr-only">Instagram</span>
+<div class="size-5 bg-current rounded-sm opacity-50"></div>
+</a>
+</div>
+</div>
+</div>
+<div class="max-w-[1280px] mx-auto pt-8 border-t border-gray-200 dark:border-[#283039] flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-xs text-gray-500 dark:text-[#9dabb9]">© 2023 Voaya Inc. Todos los derechos reservados.</p>
+<div class="flex gap-6">
+<span class="text-xs text-gray-500 dark:text-[#9dabb9]">Hecho con ❤️ para viajeros</span>
+</div>
+</div>
+</footer>
+</div>
+</body></html>
