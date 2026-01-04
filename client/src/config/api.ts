@@ -7,7 +7,7 @@ export const getApiUrl = (): string => {
 
     // En el lado del servidor (SSR) o en desarrollo local, apunta a localhost
     if (typeof window === 'undefined' || window.location.hostname === 'localhost') {
-        return 'http://localhost:3001';
+        return 'http://localhost:3001/api';
     }
 
     // En producción (cuando se accede a través de un dominio), usa una ruta relativa

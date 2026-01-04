@@ -1,9 +1,8 @@
 'use client';
 
-import { useUser, useFirestore, useDoc, useAuth } from '@/firebase';
+import { useUser, useDoc, useAuth } from '@/firebase'; // Now Supabase powered
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
-import { doc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -30,16 +29,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { updateDocumentNonBlocking } from '../../../../src/firebase/non-blocking-updates';
-import { reauthenticateAndChangePassword, deleteUserAccount } from '../../../../src/firebase/non-blocking-login';
+import { updateDocumentNonBlocking } from '../../firebase/non-blocking-updates';
+import { reauthenticateAndChangePassword, deleteUserAccount } from '../../firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 
 interface UserProfile {
-  firstName: string;
-  lastName: string;
+  nombre: string;
+  apellidos: string;
   email: string;
-  preferredCurrency: string;
+  moneda_preferida: string;
 }
 
 const profileFormSchema = z.object({
@@ -49,7 +48,7 @@ const profileFormSchema = z.object({
 });
 
 const passwordFormSchema = z.object({
-  currentPassword: z.string().min(1, { message: 'La contraseña actual es requerida.' }),
+  currentPassword: z.string().optional(), // Supabase doesn't strict require current password for update if session is active usually, but depends on security settings. We will try simple update.
   newPassword: z.string().min(6, { message: 'La nueva contraseña debe tener al menos 6 caracteres.' }),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -60,17 +59,12 @@ const passwordFormSchema = z.object({
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
-  const auth = useAuth();
+  const auth = useAuth(); // Helper returning supabase.auth
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const userProfileRef = useMemo(() => {
-    if (!firestore || !user) return null;
-    return doc(firestore, `users/${user.uid}`);
-  }, [firestore, user]);
-
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  // useDoc now expects (table, id)
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc('usuarios', user?.id);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -99,18 +93,18 @@ export default function SettingsPage() {
   useEffect(() => {
     if (userProfile) {
       profileForm.reset({
-        firstName: userProfile.firstName || '',
-        lastName: userProfile.lastName || '',
+        firstName: userProfile.nombre || '',
+        lastName: userProfile.apellidos || '',
         email: user?.email || '',
       });
     }
   }, [userProfile, user, profileForm]);
 
   const handleProfileUpdate = (values: z.infer<typeof profileFormSchema>) => {
-    if (!userProfileRef) return;
-    updateDocumentNonBlocking(userProfileRef, {
-      firstName: values.firstName,
-      lastName: values.lastName,
+    if (!user) return;
+    updateDocumentNonBlocking('usuarios', user.id, {
+      nombre: values.firstName,
+      apellidos: values.lastName,
     });
     toast({
       title: 'Perfil Actualizado',
@@ -120,7 +114,8 @@ export default function SettingsPage() {
 
   const handlePasswordChange = (values: z.infer<typeof passwordFormSchema>) => {
     if (!auth || !user) return;
-    reauthenticateAndChangePassword(auth, user, values.currentPassword, values.newPassword);
+    // We pass auth (supabase.auth) and user/newPassword
+    reauthenticateAndChangePassword(auth, user, values.currentPassword || '', values.newPassword);
     passwordForm.reset();
   };
 
@@ -217,12 +212,13 @@ export default function SettingsPage() {
           <CardContent>
             <Form {...passwordForm}>
               <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
+                {/* Removed Current Password Requirement Visual if we want to simplify, but keeping field for now */}
                 <FormField
                   control={passwordForm.control}
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña Actual</FormLabel>
+                      <FormLabel>Contraseña Actual (Opcional)</FormLabel>
                       <FormControl>
                         <Input type="password" {...field} />
                       </FormControl>

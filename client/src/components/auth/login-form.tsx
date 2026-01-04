@@ -17,8 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff } from 'lucide-react';
 
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { supabase } from '@/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -35,7 +34,6 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const { toast } = useToast();
-  const auth = useAuth();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -48,10 +46,15 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth) return;
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const userId = userCredential.user.uid;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password
+      });
+
+      if (error) throw error;
+
+      const userId = data.user.id;
 
       // Save userId to cookies
       saveUserIdToCookie(userId);
@@ -64,13 +67,14 @@ export function LoginForm() {
     } catch (error: any) {
       console.error("Sign-In Error:", error);
       let description = "Ocurrió un error al iniciar sesión.";
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      // Supabase error codes are different, usually just check message or status
+      if (error.message === 'Invalid login credentials') {
         description = 'Las credenciales son incorrectas. Por favor, verifica tu correo y contraseña.';
       }
       toast({
         variant: "destructive",
         title: "Error de inicio de sesión",
-        description,
+        description: error.message || description,
       });
     }
   }

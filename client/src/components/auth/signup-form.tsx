@@ -16,9 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { supabase } from '@/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -61,8 +59,6 @@ const formSchema = z
 
 export function SignUpForm() {
   const { toast } = useToast();
-  const auth = useAuth();
-  const firestore = useFirestore();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -79,25 +75,29 @@ export function SignUpForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!auth || !firestore) return;
     const { email, password, firstName, lastName, preferredCurrency } = values;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Guardar el perfil del usuario en Firestore
-      const userProfileRef = doc(firestore, `users/${user.uid}`);
-      await setDoc(userProfileRef, {
-        id: user.uid,
-        email: user.email,
-        firstName,
-        lastName,
-        preferredCurrency,
-        dateJoined: new Date().toISOString(),
+      // 1. Sign Up in Supabase Auth with user metadata
+      // The trigger handle_new_user will automatically create the profile in public.usuarios
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            preferred_currency: preferredCurrency,
+          }
+        }
       });
 
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("No user created");
+
+      const user = authData.user;
+
       // Save userId to cookies
-      saveUserIdToCookie(user.uid);
+      saveUserIdToCookie(user.id);
 
       toast({
         title: "Cuenta creada",
@@ -107,10 +107,10 @@ export function SignUpForm() {
     } catch (error: any) {
       console.error("Sign-Up Error:", error);
       let description = "Ocurrió un error durante el registro.";
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message?.includes('already registered')) { // Generic check, adjust code if needed
         description = 'Este correo electrónico ya está en uso. Por favor, intenta con otro.';
-      } else if (error.code === 'auth/weak-password') {
-        description = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+      } else {
+        description = error.message;
       }
       toast({
         variant: "destructive",

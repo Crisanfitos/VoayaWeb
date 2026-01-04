@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Chat, Message } from '@/shared/types/chat';
+import { Chat, Message } from '@shared/types/chat';
 import {
     collection,
     query,
@@ -77,7 +77,7 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
                 const resp = await fetch(`${SERVER_URL}/api/chat/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.uid, categories: [] })
+                    body: JSON.stringify({ userId: user.id, categories: [] })
                 });
                 const body = await resp.json();
                 cid = body.chatId;
@@ -92,7 +92,7 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
             await fetch(`${SERVER_URL}/api/chat/message`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatId: cid, text: inputMessage.trim(), userId: user.uid })
+                body: JSON.stringify({ chatId: cid, text: inputMessage.trim(), userId: user.id })
             });
 
             setInputMessage('');
@@ -110,7 +110,7 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
             const resp = await fetch(`${SERVER_URL}/api/chat/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.uid, categories: [] })
+                body: JSON.stringify({ userId: user.id, categories: [] })
             });
             const body = await resp.json();
             const newId = body.chatId;

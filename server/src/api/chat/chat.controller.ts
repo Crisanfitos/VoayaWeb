@@ -1,69 +1,79 @@
 import { Router } from 'express';
-import admin, { firestore } from '../../firebase/admin';
+import { supabaseAdmin } from '../../supabase/admin';
 import { geminiService } from '../../services/ai/gemini-simple.service';
 
 const router = Router();
 
-const CHAT_COLLECTION = 'chats';
+// Helper to map DB snake_case to API camelCase for Chat
+const mapChatToApi = (chat: any) => ({
+    id: chat.id,
+    userId: chat.usuario_id,
+    createdAt: chat.fecha_creacion,
+    title: chat.titulo,
+    status: chat.estado,
+    categories: chat.categorias || [],
+    lastMessageAt: chat.ultimo_mensaje_en,
+    metadata: chat.metadatos || {}
+});
+
+// Helper to map DB to API for Message
+const mapMessageToApi = (msg: any) => ({
+    id: msg.id,
+    chatId: msg.chat_id,
+    userId: msg.usuario_id,
+    role: msg.rol,
+    text: msg.contenido,
+    createdAt: msg.fecha_creacion,
+    metadata: msg.metadatos || {}
+});
 
 // List chats (optionally filtered by userId)
 router.get('/', async (req, res) => {
     try {
         const userId = typeof req.query.userId === 'string' ? req.query.userId : undefined;
 
-        // If a userId filter is provided, query by userId only (no orderBy) to avoid requiring a composite index.
-        // We'll limit the result set on the server and then sort in-memory by lastMessageAt.
+        let query = supabaseAdmin
+            .from('chats')
+            .select('*')
+            .order('ultimo_mensaje_en', { ascending: false })
+            .limit(50);
+
         if (userId) {
-            const snap = await firestore.collection(CHAT_COLLECTION)
-                .where('userId', '==', userId)
-                .limit(50)
-                .get();
-
-            const chats = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })) as any[];
-
-            // Sort in-memory by lastMessageAt (most recent first). Handle missing timestamps.
-            chats.sort((a, b) => {
-                const aTs = a.lastMessageAt && typeof a.lastMessageAt.toMillis === 'function'
-                    ? a.lastMessageAt.toMillis()
-                    : a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-                const bTs = b.lastMessageAt && typeof b.lastMessageAt.toMillis === 'function'
-                    ? b.lastMessageAt.toMillis()
-                    : b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
-                return bTs - aTs;
-            });
-
-            return res.json({ chats });
+            query = query.eq('usuario_id', userId);
         }
 
-        // No userId: order by lastMessageAt desc (no composite index required)
-        const snap = await firestore.collection(CHAT_COLLECTION)
-            .orderBy('lastMessageAt', 'desc')
-            .limit(50)
-            .get();
+        const { data, error } = await query;
 
-        const chats = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })) as any[];
+        if (error) throw error;
+
+        const chats = data.map(mapChatToApi);
         res.json({ chats });
     } catch (error) {
         console.error('Error listing chats:', error);
         res.status(500).json({ error: 'Failed to list chats' });
     }
 });
+
 // Create a new chat document (called when a user starts a planner chat)
 router.post('/start', async (req, res) => {
     try {
         const { userId, categories = [] } = req.body;
 
-        const chatRef = await firestore.collection(CHAT_COLLECTION).add({
-            userId: userId || null,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            title: 'Nuevo Chat',
-            status: 'active',
-            categories,
-            lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
-            metadata: {}
-        });
+        const { data, error } = await supabaseAdmin
+            .from('chats')
+            .insert({
+                usuario_id: userId || null, // Allow null for anonymous/unauth logic if supported, but typically foreign key constraints might fail if user doesn't exist in 'usuarios' table? Schema has REFERENCES. If anonymous users aren't in 'usuarios', this breaks. Assuming userId is valid.
+                titulo: 'Nuevo Chat',
+                estado: 'active',
+                categorias: categories,
+                // fecha_creacion & ultimo_mensaje_en default to NOW()
+            })
+            .select('id')
+            .single();
 
-        res.json({ chatId: chatRef.id });
+        if (error) throw error;
+
+        res.json({ chatId: data.id });
     } catch (error) {
         console.error('Error creating chat:', error);
         res.status(500).json({ error: 'Failed to create chat' });
@@ -81,33 +91,40 @@ router.post('/message', async (req, res) => {
 
         // If no chatId provided, create a new chat
         if (!chatId) {
-            const chatRef = await firestore.collection(CHAT_COLLECTION).add({
-                userId: userId || null,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                title: text.slice(0, 100),
-                status: 'active',
-                categories: [],
-                lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
-                metadata: {}
-            });
-            chatId = chatRef.id;
+            const { data: newChat, error: createError } = await supabaseAdmin
+                .from('chats')
+                .insert({
+                    usuario_id: userId || null,
+                    titulo: text.slice(0, 100),
+                    estado: 'active',
+                    categorias: [],
+                })
+                .select('id')
+                .single();
+
+            if (createError) throw createError;
+            chatId = newChat.id;
         }
 
         // Save user message
-        const messagesRef = firestore.collection(CHAT_COLLECTION).doc(chatId).collection('messages');
-        await messagesRef.add({
-            role: 'user',
-            text,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            userId: userId || null
+        const { error: msgError } = await supabaseAdmin.from('mensajes').insert({
+            chat_id: chatId,
+            usuario_id: userId || null,
+            rol: 'user',
+            contenido: text,
         });
 
-        // Get chat data to determine which model to use
-        const chatRef = firestore.collection(CHAT_COLLECTION).doc(chatId);
-        const chatSnap = await chatRef.get();
-        const chatData = chatSnap.data() || {};
-        const categories = chatData.categories || [];
+        if (msgError) throw msgError;
 
+        // Get chat data (for categories) to determine which model/prompt to use
+        // In original code: categories were passed to Gemini? No, logged.
+        const { data: chatData, error: chatError } = await supabaseAdmin
+            .from('chats')
+            .select('*')
+            .eq('id', chatId)
+            .single();
+
+        const categories = chatData?.categorias || [];
         console.log('[Chat API] Sending message to Gemini for categories:', categories);
 
         // Get AI response from Gemini
@@ -121,19 +138,18 @@ router.post('/message', async (req, res) => {
         }
 
         // Save AI response
-        await messagesRef.add({
-            role: 'assistant',
-            text: aiResponse,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            userId: null
+        await supabaseAdmin.from('mensajes').insert({
+            chat_id: chatId,
+            usuario_id: null,
+            rol: 'assistant',
+            contenido: aiResponse,
         });
 
         // Update chat's lastMessageAt
-        await chatRef.update({
-            lastMessageAt: admin.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {
-            // If update fails (e.g., doc just created), ignore
-        });
+        await supabaseAdmin
+            .from('chats')
+            .update({ ultimo_mensaje_en: new Date().toISOString() })
+            .eq('id', chatId);
 
         res.json({
             chatId,
@@ -154,19 +170,31 @@ router.post('/complete', async (req, res) => {
         const { chatId } = req.body;
         if (!chatId) return res.status(400).json({ error: 'chatId required' });
 
-        const chatRef = firestore.collection(CHAT_COLLECTION).doc(chatId);
-        const chatSnap = await chatRef.get();
-        if (!chatSnap.exists) return res.status(404).json({ error: 'Chat not found' });
+        const { data: chatData, error: chatError } = await supabaseAdmin
+            .from('chats')
+            .select('*')
+            .eq('id', chatId)
+            .single();
 
-        await chatRef.update({
-            status: 'completed',
-            lastMessageAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        if (chatError || !chatData) return res.status(404).json({ error: 'Chat not found' });
+
+        await supabaseAdmin
+            .from('chats')
+            .update({
+                estado: 'completed',
+                ultimo_mensaje_en: new Date().toISOString()
+            })
+            .eq('id', chatId);
 
         // Gather chat data to send to external agent
-        const chatData: any = { id: chatId, ...(chatSnap.data() || {}) };
-        const messagesSnap = await chatRef.collection('messages').orderBy('createdAt', 'asc').get();
-        const messages = messagesSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+        const { data: messages } = await supabaseAdmin
+            .from('mensajes')
+            .select('*')
+            .eq('chat_id', chatId)
+            .order('fecha_creacion', { ascending: true });
+
+        const formattedMessages = messages?.map(mapMessageToApi) || [];
+        const formattedChat = mapChatToApi(chatData);
 
         const webhookUrl = process.env.N8N_WEBHOOK_URL;
         const webhookSecret = process.env.WEBHOOK_SECRET;
@@ -178,7 +206,7 @@ Recibe un objeto 'chat' y un array 'messages' con el historial. Devuelve un obje
                 await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat: chatData, messages, secret: webhookSecret, systemPrompt })
+                    body: JSON.stringify({ chat: formattedChat, messages: formattedMessages, secret: webhookSecret, systemPrompt })
                 });
             } catch (err) {
                 console.error('Failed to call webhook:', err);
@@ -203,11 +231,13 @@ router.post('/webhook-callback', async (req, res) => {
 
         if (!chatId) return res.status(400).json({ error: 'chatId required' });
 
-        const chatRef = firestore.collection(CHAT_COLLECTION).doc(chatId);
-        await chatRef.update({
-            metadata: metadata || {},
-            lastMessageAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        await supabaseAdmin
+            .from('chats')
+            .update({
+                metadatos: metadata || {},
+                ultimo_mensaje_en: new Date().toISOString()
+            })
+            .eq('id', chatId);
 
         res.json({ ok: true });
     } catch (error) {
@@ -224,20 +254,29 @@ router.post('/send-external', async (req, res) => {
         if (!chatId) return res.status(400).json({ error: 'chatId required' });
         if (!target) return res.status(400).json({ error: 'No external webhook configured' });
 
-        const chatRef = firestore.collection(CHAT_COLLECTION).doc(chatId);
-        const chatSnap = await chatRef.get();
-        if (!chatSnap.exists) return res.status(404).json({ error: 'Chat not found' });
+        const { data: chatData, error: chatError } = await supabaseAdmin
+            .from('chats')
+            .select('*')
+            .eq('id', chatId)
+            .single();
 
-        const chatData: any = { id: chatId, ...(chatSnap.data() || {}) };
-        // Get latest messages (could be large; consider limits in production)
-        const messagesSnap = await chatRef.collection('messages').orderBy('createdAt', 'asc').get();
-        const messages = messagesSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+        if (chatError || !chatData) return res.status(404).json({ error: 'Chat not found' });
+
+        const formattedChat = mapChatToApi(chatData);
+
+        const { data: messages } = await supabaseAdmin
+            .from('mensajes')
+            .select('*')
+            .eq('chat_id', chatId)
+            .order('fecha_creacion', { ascending: true });
+
+        const formattedMessages = messages?.map(mapMessageToApi) || [];
 
         try {
             await fetch(target, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat: chatData, messages, secret })
+                body: JSON.stringify({ chat: formattedChat, messages: formattedMessages, secret })
             });
         } catch (err) {
             console.error('Failed to call external webhook:', err);
@@ -257,15 +296,24 @@ router.get('/:chatId', async (req, res) => {
         const { chatId } = req.params;
         if (!chatId) return res.status(400).json({ error: 'chatId required' });
 
-        const chatRef = firestore.collection(CHAT_COLLECTION).doc(chatId);
-        const chatSnap = await chatRef.get();
-        if (!chatSnap.exists) return res.status(404).json({ error: 'Chat not found' });
+        const { data: chatData, error: chatError } = await supabaseAdmin
+            .from('chats')
+            .select('*')
+            .eq('id', chatId)
+            .single();
 
-        const chatData: any = { id: chatId, ...(chatSnap.data() || {}) };
-        const messagesSnap = await chatRef.collection('messages').orderBy('createdAt', 'asc').get();
-        const messages = messagesSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+        if (chatError || !chatData) return res.status(404).json({ error: 'Chat not found' });
 
-        res.json({ chat: chatData, messages });
+        const { data: messages, error: messagesError } = await supabaseAdmin
+            .from('mensajes')
+            .select('*')
+            .eq('chat_id', chatId)
+            .order('fecha_creacion', { ascending: true });
+
+        const formattedChat = mapChatToApi(chatData);
+        const formattedMessages = messages?.map(mapMessageToApi) || [];
+
+        res.json({ chat: formattedChat, messages: formattedMessages });
     } catch (error) {
         console.error('Error fetching chat:', error);
         res.status(500).json({ error: 'Failed to fetch chat' });

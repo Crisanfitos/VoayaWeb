@@ -61,3 +61,4 @@ app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
     console.log(`Health check available at http://localhost:${port}/health`);
 });
+// Server initialized

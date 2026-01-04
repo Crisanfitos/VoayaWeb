@@ -182,7 +182,7 @@ function PlanPageComponent() {
           error={null}
           initialQuery={tripDescription}
           selectedCategories={selectedCategories}
-          userId={user.uid}
+          userId={user.id}
           chatId={getChatIdFromCookie() || undefined}
         />
       </div>

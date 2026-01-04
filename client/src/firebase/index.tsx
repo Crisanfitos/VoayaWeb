@@ -1,35 +1,50 @@
 "use client";
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
-import { getFirestore, type DocumentReference, DocumentData, onSnapshot } from 'firebase/firestore';
-import { firebaseConfig } from './config';
+import { supabase } from '../supabase/client';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const firestore = getFirestore(app);
+import { User, Session } from '@supabase/supabase-js';
 
 type AuthContextType = {
     user: User | null;
+    session: Session | null;
     isUserLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
+    session: null,
     isUserLoading: true,
 });
 
 export function FirebaseClientProvider({ children }: { children: ReactNode }): JSX.Element {
-    const [authState, setAuthState] = useState<AuthContextType>({ user: null, isUserLoading: true });
+    const [authState, setAuthState] = useState<AuthContextType>({
+        user: null,
+        session: null,
+        isUserLoading: true
+    });
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setAuthState({ user, isUserLoading: false });
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setAuthState({
+                user: session?.user ?? null,
+                session: session,
+                isUserLoading: false
+            });
         });
 
-        return () => unsubscribe();
+        // Listen for changes
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setAuthState({
+                user: session?.user ?? null,
+                session: session,
+                isUserLoading: false
+            });
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     return (
@@ -40,41 +55,63 @@ export function FirebaseClientProvider({ children }: { children: ReactNode }): J
 }
 
 export function useAuth() {
-    return auth;
+    return supabase.auth;
 }
 
 export function useUser() {
     const context = useContext(AuthContext);
     if (!context) {
-        throw new Error('useUser must be used within a FirebaseClientProvider');
+        throw new Error('useUser must be used within a FirebaseClientProvider (now Supabase)');
     }
     return context;
 }
 
 export function useFirestore() {
-    return firestore;
+    return supabase; // Returning supabase client instead of firestore
 }
 
-export function useDoc<T = DocumentData>(docRef: DocumentReference<T> | null) {
-    const [data, setData] = useState<T | null>(null);
+// Adapted useDoc for Supabase
+// Note: This changes the signature slightly. 
+// Old: useDoc(docRef)
+// New: useDoc(table, id) or we need to adapt the usage.
+// For now, I'll provide a placeholder that expects table and id, 
+// but I will need to refactor the calling code.
+export function useDoc(table: string, id: string | undefined | null) {
+    const [data, setData] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!docRef) {
+        if (!id || !table) {
             setData(null);
             setIsLoading(false);
             return;
         }
 
-        const unsubscribe = onSnapshot(docRef, (doc) => {
-            setData(doc.exists() ? doc.data() : null);
-            setIsLoading(false);
-        });
+        async function fetchData() {
+            setIsLoading(true);
+            const { data, error } = await supabase
+                .from(table)
+                .select('*')
+                .eq('id', id)
+                .single();
 
-        return () => unsubscribe();
-    }, [docRef]);
+            if (error) {
+                console.error(`Error fetching ${table} ${id}:`, error);
+                setData(null);
+            } else {
+                setData(data);
+            }
+            setIsLoading(false);
+        }
+
+        fetchData();
+
+        // Optional: Realtime subscription could go here
+    }, [table, id]);
 
     return { data, isLoading };
 }
 
-export default app;
+// Helper to keep compatibility with some Firebase types if needed, 
+// though we should remove them eventually.
+export type { User };

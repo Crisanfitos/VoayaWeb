@@ -1,6 +1,6 @@
 "use server";
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenerativeAI, GenerateContentResult } from "@google/generative-ai";
 import { TravelBrief, TravelPlan, ChatMessage, GroundingAttribution } from '@/types';
 
 export async function sendConversationToWebhook(brief: TravelBrief, webhookUrl = 'https://n8n.voaya.es/webhook-test/40e869f7-f18a-42e5-b16c-1b2e134660b8') {
@@ -38,11 +38,11 @@ export const generatePlan = async (brief: TravelBrief, userLocation: Geolocation
     }
 
     const planGenerationModelName = 'gemini-1.5-pro';
-    const serverGenAI = new GoogleGenAI(process.env.GEMINI_API_KEY!);
-    const planGenerationModel = serverGenAI.getGenerativeModel({model: planGenerationModelName, tools: [{googleSearch: {}}]});
+    const serverGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    const planGenerationModel = serverGenAI.getGenerativeModel({ model: planGenerationModelName, tools: [{ googleSearch: {} } as any] });
 
 
-    const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map(m => `${m.role}: ${m.text}`).join('\n')}`;
+    const briefText = `Idea inicial: "${brief.initialQuery}".\n\nHistorial de la conversación:\n${brief.chatHistory.map((m: ChatMessage) => `${m.role}: ${m.text}`).join('\n')}`;
 
     const prompt = `
 Eres "Cerebro IA", un planificador de viajes experto. Tu tarea es crear un itinerario de viaje completo basado en el siguiente resumen del usuario:\n${briefText}\n
@@ -86,7 +86,7 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
 `;
 
     try {
-        const result: GenerateContentResponse = await planGenerationModel.generateContent(prompt);
+        const result: GenerateContentResult = await planGenerationModel.generateContent(prompt);
         const response = result.response;
         const text = response.text();
         const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
@@ -96,7 +96,7 @@ Tu resultado final DEBE ser un único objeto JSON encerrado en un bloque de cód
 
         const parsedPlan = JSON.parse(jsonMatch[1]) as Omit<TravelPlan, 'groundingAttribution'>;
 
-        const attributions: GroundingAttribution[] = response.candidates?.[0]?.citationMetadata?.citationSources.map(source => ({
+        const attributions: GroundingAttribution[] = response.candidates?.[0]?.citationMetadata?.citationSources.map((source: { uri?: string | null }) => ({
             uri: source.uri ?? '',
             title: '' // Title is not directly available in this structure
         })) || [];

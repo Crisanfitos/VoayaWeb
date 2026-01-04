@@ -1,0 +1,26 @@
+{
+  "pages": {
+    "/signup/page": [
+      "static/chunks/node_modules_next_dist_1a6ee436._.js",
+      "static/chunks/client_src_app_favicon_ico_mjs_c406ab0f._.js",
+      "static/chunks/client_src_app_globals_a86bd5e4.css",
+      "static/chunks/node_modules_tailwind-merge_dist_bundle-mjs_mjs_b854acb4._.js",
+      "static/chunks/node_modules_@supabase_auth-js_dist_module_6ccbf858._.js",
+      "static/chunks/d9ef2_@firebase_auth_dist_esm2017_6f46a82b._.js",
+      "static/chunks/node_modules_016851ac._.js",
+      "static/chunks/client_src_85f00b0e._.js",
+      "static/chunks/client_src_app_layout_tsx_c0237562._.js",
+      "static/chunks/add2e_zod_v4_c897e455._.js",
+      "static/chunks/_4edfea07._.js",
+      "static/chunks/client_src_61956c80._.js",
+      "static/chunks/client_src_app_signup_page_tsx_05c2382e._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_fd44f5a4._.js",
+      "static/chunks/node_modules_next_dist_compiled_2ce9398a._.js",
+      "static/chunks/node_modules_next_dist_client_8f19e6fb._.js",
+      "static/chunks/node_modules_next_dist_2ecbf5fa._.js",
+      "static/chunks/node_modules_@swc_helpers_cjs_00636ac3._.js",
+      "static/chunks/client_e69f0d32._.js",
+      "static/chunks/client_93808211._.js"
+    ]
+  }
+}
