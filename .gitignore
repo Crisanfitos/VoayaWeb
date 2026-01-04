@@ -1,18 +1,19 @@
 # Dependencies
-node_modules
+node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
 
 # Testing
-coverage
+coverage/
 
 # Next.js
-/.next/
-/out/
+.next/
+out/
 
 # Production
-/build
+build/
+dist/
 
 # Misc
 .DS_Store
@@ -25,13 +26,13 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Vercel
-.vercel
+.vercel/
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# Environmental Variables (Critical for security)
+# Environmental Variables
 .env
 .env.local
 .env.development.local
@@ -46,8 +47,8 @@ firestore-debug.log
 supabase/functions/*/deno.lock
 
 # IDEs
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
 
