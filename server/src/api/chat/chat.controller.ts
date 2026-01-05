@@ -320,4 +320,53 @@ router.get('/:chatId', async (req, res) => {
     }
 });
 
+// Delete a chat and its messages
+router.delete('/:chatId', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        if (!chatId) return res.status(400).json({ error: 'chatId required' });
+
+        // Los mensajes se eliminan automáticamente por ON DELETE CASCADE
+        const { error } = await supabaseAdmin
+            .from('chats')
+            .delete()
+            .eq('id', chatId);
+
+        if (error) throw error;
+
+        res.json({ ok: true, mensaje: 'Chat eliminado' });
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        res.status(500).json({ error: 'Failed to delete chat' });
+    }
+});
+
+// Toggle favorite status of a chat
+router.patch('/:chatId/favorito', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { esFavorito } = req.body;
+
+        if (!chatId) return res.status(400).json({ error: 'chatId required' });
+        if (typeof esFavorito !== 'boolean') {
+            return res.status(400).json({ error: 'esFavorito debe ser boolean' });
+        }
+
+        const { error } = await supabaseAdmin
+            .from('chats')
+            .update({
+                es_favorito: esFavorito,
+                ultimo_mensaje_en: new Date().toISOString()
+            })
+            .eq('id', chatId);
+
+        if (error) throw error;
+
+        res.json({ ok: true, esFavorito });
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        res.status(500).json({ error: 'Failed to toggle favorite' });
+    }
+});
+
 export default router;

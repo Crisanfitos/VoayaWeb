@@ -54,3 +54,6 @@ supabase/functions/*/deno.lock
 
 # OS
 Thumbs.db
+
+# Detalles técnicos privados (esquemas, migraciones, documentación interna)
+.detalles_tecnicos/

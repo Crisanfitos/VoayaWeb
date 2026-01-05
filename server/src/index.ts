@@ -14,6 +14,10 @@ console.log(`Loading environment variables from: ${envPath}`);
 
 // Importar rutas
 import chatRoutes from './api/chat/chat.controller';
+import vueloRoutes from './api/vuelo/vuelo.controller';
+import hotelRoutes from './api/hotel/hotel.controller';
+import viajeRoutes from './api/viaje/viaje.controller';
+import usuarioRoutes from './api/usuario/usuario.controller';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -32,7 +36,7 @@ console.log(`CORS allowed origins: ${corsOrigins.join(', ')}`);
 app.use(cors({
     origin: corsOrigins,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -44,6 +48,10 @@ app.get('/health', (req, res) => {
 
 // Rutas API
 app.use('/api/chat', chatRoutes);
+app.use('/api/vuelos', vueloRoutes);
+app.use('/api/hoteles', hotelRoutes);
+app.use('/api/viajes', viajeRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

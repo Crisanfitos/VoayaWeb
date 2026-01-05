@@ -2,9 +2,10 @@
 
 import { useUser, useDoc, useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { z } from 'zod';
+import { ApiService } from '@/services/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -31,6 +32,7 @@ import {
 import { updateDocumentNonBlocking } from '@/lib/auth/non-blocking-updates';
 import { reauthenticateAndChangePassword, deleteUserAccount } from '@/lib/auth/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme, ThemeMode } from '@/lib/theme-provider';
 import Link from 'next/link';
 
 type SidebarTab = 'profile' | 'security' | 'preferences' | 'notifications' | 'subscription';
@@ -56,16 +58,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const auth = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('profile');
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
 
   // AI Preferences state
   const [aiPreferences, setAiPreferences] = useState({
-    adventure: 75,
-    luxury: 40,
-    nature: 60,
-    spontaneous: 20,
+    aventura: 50,
+    lujo: 50,
+    naturaleza: 50,
+    espontaneo: 50,
   });
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc('usuarios', user?.id);
 
@@ -102,6 +107,16 @@ export default function SettingsPage() {
         email: user?.email || '',
         bio: userProfile.bio || '',
       });
+      // Cargar preferencias IA si existen
+      if (userProfile.preferencias_ia) {
+        const prefs = userProfile.preferencias_ia;
+        setAiPreferences({
+          aventura: prefs.aventura ?? 50,
+          lujo: prefs.lujo ?? 50,
+          naturaleza: prefs.naturaleza ?? 50,
+          espontaneo: prefs.espontaneo ?? 50,
+        });
+      }
     }
   }, [userProfile, user, profileForm]);
 
@@ -116,6 +131,51 @@ export default function SettingsPage() {
       title: 'Perfil Actualizado',
       description: 'Tu información de perfil ha sido actualizada.',
     });
+  };
+
+  const handleSavePreferences = async () => {
+    if (!user) return;
+    setIsSavingPreferences(true);
+    try {
+      await ApiService.actualizarPreferenciasIA(user.id, aiPreferences);
+      toast({
+        title: 'Preferencias Guardadas',
+        description: 'Tus preferencias de IA han sido actualizadas.',
+      });
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron guardar las preferencias.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingPreferences(false);
+    }
+  };
+
+  const handleThemeChange = async (newTheme: ThemeMode) => {
+    if (!user) return;
+    setIsSavingTheme(true);
+    // Optimistic update
+    setTheme(newTheme);
+
+    try {
+      await ApiService.actualizarTema(user.id, newTheme);
+      toast({
+        title: 'Tema Actualizado',
+        description: `El tema se ha cambiado a ${newTheme === 'system' ? 'sistema' : newTheme === 'light' ? 'claro' : 'oscuro'}.`,
+      });
+    } catch (error) {
+      console.error('Error saving theme:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo guardar la preferencia de tema.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingTheme(false);
+    }
   };
 
   const handlePasswordChange = (values: z.infer<typeof passwordFormSchema>) => {
@@ -169,8 +229,8 @@ export default function SettingsPage() {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
-                  ? 'bg-voaya-primary text-white shadow-md shadow-voaya-primary/20'
-                  : 'text-text-secondary dark:text-text-muted hover:bg-slate-50 dark:hover:bg-input-dark hover:text-voaya-primary'
+                ? 'bg-voaya-primary text-white shadow-md shadow-voaya-primary/20'
+                : 'text-text-secondary dark:text-text-muted hover:bg-slate-50 dark:hover:bg-input-dark hover:text-voaya-primary'
                 }`}
             >
               <span className={`material-symbols-outlined ${activeTab === item.id ? 'fill' : ''}`}>
@@ -353,8 +413,11 @@ export default function SettingsPage() {
                   type="range"
                   min="0"
                   max="100"
-                  value={aiPreferences.adventure}
-                  onChange={(e) => setAiPreferences({ ...aiPreferences, adventure: Number(e.target.value) })}
+                  value={aiPreferences.aventura}
+                  onChange={(e) => {
+                    const newPrefs = { ...aiPreferences, aventura: Number(e.target.value) };
+                    setAiPreferences(newPrefs);
+                  }}
                   className="w-full"
                 />
               </div>
@@ -367,8 +430,11 @@ export default function SettingsPage() {
                   type="range"
                   min="0"
                   max="100"
-                  value={aiPreferences.luxury}
-                  onChange={(e) => setAiPreferences({ ...aiPreferences, luxury: Number(e.target.value) })}
+                  value={aiPreferences.lujo}
+                  onChange={(e) => {
+                    const newPrefs = { ...aiPreferences, lujo: Number(e.target.value) };
+                    setAiPreferences(newPrefs);
+                  }}
                   className="w-full"
                 />
               </div>
@@ -381,8 +447,11 @@ export default function SettingsPage() {
                   type="range"
                   min="0"
                   max="100"
-                  value={aiPreferences.nature}
-                  onChange={(e) => setAiPreferences({ ...aiPreferences, nature: Number(e.target.value) })}
+                  value={aiPreferences.naturaleza}
+                  onChange={(e) => {
+                    const newPrefs = { ...aiPreferences, naturaleza: Number(e.target.value) };
+                    setAiPreferences(newPrefs);
+                  }}
                   className="w-full"
                 />
               </div>
@@ -395,10 +464,75 @@ export default function SettingsPage() {
                   type="range"
                   min="0"
                   max="100"
-                  value={aiPreferences.spontaneous}
-                  onChange={(e) => setAiPreferences({ ...aiPreferences, spontaneous: Number(e.target.value) })}
+                  value={aiPreferences.espontaneo}
+                  onChange={(e) => {
+                    const newPrefs = { ...aiPreferences, espontaneo: Number(e.target.value) };
+                    setAiPreferences(newPrefs);
+                  }}
                   className="w-full"
                 />
+              </div>
+            </div>
+
+            {/* Save Preferences Button */}
+            <Button
+              onClick={handleSavePreferences}
+              disabled={isSavingPreferences}
+              className="w-fit bg-voaya-primary hover:bg-voaya-primary-dark text-white font-bold rounded-lg px-6 py-2.5"
+            >
+              {isSavingPreferences ? 'Guardando...' : 'Guardar Preferencias'}
+            </Button>
+          </div>
+
+          {/* Appearance */}
+          <div className="flex flex-col gap-6 md:col-span-2 bg-white dark:bg-surface-dark p-6 rounded-xl border border-stroke dark:border-input-dark shadow-soft">
+            <div className="flex items-center gap-2 pb-2 border-b border-stroke/50 dark:border-input-dark">
+              <span className="material-symbols-outlined text-text-secondary">dark_mode</span>
+              <h3 className="text-lg font-bold text-text-main dark:text-white">Apariencia</h3>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-8 justify-between items-start md:items-center">
+              <div>
+                <h4 className="text-text-main dark:text-white font-bold">Modo del Tema</h4>
+                <p className="text-text-secondary dark:text-text-muted text-sm mt-1">
+                  Elige cómo quieres que se vea Voaya.
+                </p>
+              </div>
+
+              <div className="flex bg-gray-100 dark:bg-input-dark rounded-lg p-1 border border-stroke dark:border-transparent">
+                <button
+                  onClick={() => handleThemeChange('light')}
+                  disabled={isSavingTheme}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${theme === 'light'
+                    ? 'bg-white dark:bg-surface-light text-voaya-primary shadow-sm'
+                    : 'text-text-secondary dark:text-text-muted hover:text-text-main dark:hover:text-white'
+                    }`}
+                >
+                  <span className="material-symbols-outlined text-lg">light_mode</span>
+                  Claro
+                </button>
+                <button
+                  onClick={() => handleThemeChange('dark')}
+                  disabled={isSavingTheme}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${theme === 'dark'
+                    ? 'bg-white dark:bg-surface-light text-voaya-primary shadow-sm'
+                    : 'text-text-secondary dark:text-text-muted hover:text-text-main dark:hover:text-white'
+                    }`}
+                >
+                  <span className="material-symbols-outlined text-lg">dark_mode</span>
+                  Oscuro
+                </button>
+                <button
+                  onClick={() => handleThemeChange('system')}
+                  disabled={isSavingTheme}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${theme === 'system'
+                    ? 'bg-white dark:bg-surface-light text-voaya-primary shadow-sm'
+                    : 'text-text-secondary dark:text-text-muted hover:text-text-main dark:hover:text-white'
+                    }`}
+                >
+                  <span className="material-symbols-outlined text-lg">settings_system_daydream</span>
+                  Sistema
+                </button>
               </div>
             </div>
           </div>

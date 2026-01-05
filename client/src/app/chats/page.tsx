@@ -9,22 +9,24 @@ import { Loader } from '@/components/ui/loader';
 
 type ChatItem = {
   id: string;
-  title?: string;
-  status?: string;
-  lastMessageAt?: any;
-  metadata?: any;
+  titulo?: string;
+  title?: string; // alias para compatibilidad
+  estado?: string;
+  status?: string; // alias para compatibilidad
+  ultimoMensajeEn?: string;
+  lastMessageAt?: any; // alias para compatibilidad
+  metadatos?: any;
+  metadata?: any; // alias para compatibilidad
+  esFavorito?: boolean;
+  imagenUrl?: string;
 };
 
-type FilterType = 'all' | 'upcoming' | 'completed' | 'favorites';
+type FilterType = 'all' | 'active' | 'completed' | 'favorites';
 
 const statusConfig: Record<string, { bg: string; text: string }> = {
-  'En proceso': { bg: 'bg-voaya-primary', text: 'Planificación' },
-  'Planificación': { bg: 'bg-voaya-primary', text: 'Planificación' },
-  'Vuelos Listos': { bg: 'bg-green-500', text: 'Vuelos Listos' },
-  'Borrador': { bg: 'bg-gray-500/80', text: 'Borrador' },
-  'Completado': { bg: 'bg-purple-500', text: 'Completado' },
-  'Finalizado': { bg: 'bg-purple-500', text: 'Completado' },
-  'Favorito': { bg: 'bg-orange-500', text: 'Favorito' },
+  'active': { bg: 'bg-voaya-primary', text: 'En Proceso' },
+  'completed': { bg: 'bg-green-500', text: 'Completado' },
+  'archived': { bg: 'bg-gray-500/80', text: 'Archivado' },
 };
 
 // Sample destinations for visual variety
@@ -45,9 +47,11 @@ export default function ChatsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [forceReady, setForceReady] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingFavoriteId, setTogglingFavoriteId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Timeout to prevent infinite loading
     const timer = setTimeout(() => {
       setForceReady(true);
     }, 3000);
@@ -60,23 +64,24 @@ export default function ChatsPage() {
     }
   }, [user, isUserLoading, router]);
 
+  const loadChats = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const userId = getUserIdFromCookie() || undefined;
+      const res: any = await ApiService.getChats(userId);
+      setChats(res?.chats || []);
+    } catch (err: any) {
+      console.error('Failed to load chats', err);
+      setError(err?.message || 'Error cargando chats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      setLoading(true);
-      try {
-        const userId = getUserIdFromCookie() || undefined;
-        const res: any = await ApiService.getChats(userId);
-        setChats(res?.chats || []);
-      } catch (err: any) {
-        console.error('Failed to load chats', err);
-        setError(err?.message || 'Error cargando chats');
-      } finally {
-        setLoading(false);
-      }
-    };
     if (user) {
-      load();
+      loadChats();
     }
   }, [user]);
 
@@ -89,12 +94,72 @@ export default function ChatsPage() {
     router.push(`/chats/${chat.id}`);
   };
 
+  const handleToggleFavorite = async (e: React.MouseEvent, chat: ChatItem) => {
+    e.stopPropagation();
+    setMenuOpenId(null);
+    setTogglingFavoriteId(chat.id);
+
+    try {
+      const nuevoEstado = !chat.esFavorito;
+      await ApiService.alternarChatFavorito(chat.id, nuevoEstado);
+      setChats(prev => prev.map(c =>
+        c.id === chat.id ? { ...c, esFavorito: nuevoEstado } : c
+      ));
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+    } finally {
+      setTogglingFavoriteId(null);
+    }
+  };
+
+  const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation();
+    setMenuOpenId(null);
+
+    if (!confirm('¿Estás seguro de que quieres eliminar este chat? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setDeletingId(chatId);
+    try {
+      await ApiService.eliminarChat(chatId);
+      setChats(prev => prev.filter(c => c.id !== chatId));
+    } catch (err) {
+      console.error('Error deleting chat:', err);
+      alert('Error al eliminar el chat');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const getTitle = (chat: ChatItem) => chat.titulo || chat.title || 'Sin título';
+  const getStatus = (chat: ChatItem) => chat.estado || chat.status || 'active';
+  const getLastMessageAt = (chat: ChatItem) => chat.ultimoMensajeEn || chat.lastMessageAt;
+  const getMetadata = (chat: ChatItem) => chat.metadatos || chat.metadata || {};
+
   const filteredChats = chats.filter(chat => {
+    // Filtro por búsqueda
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return chat.title?.toLowerCase().includes(query) || chat.id.includes(query);
+      const title = getTitle(chat).toLowerCase();
+      const destino = getMetadata(chat)?.destino?.toLowerCase() || '';
+      if (!title.includes(query) && !destino.includes(query) && !chat.id.includes(query)) {
+        return false;
+      }
     }
-    return true;
+
+    // Filtro por estado
+    const status = getStatus(chat);
+    switch (activeFilter) {
+      case 'active':
+        return status === 'active';
+      case 'completed':
+        return status === 'completed';
+      case 'favorites':
+        return chat.esFavorito === true;
+      default:
+        return true;
+    }
   });
 
   if (isUserLoading && !forceReady) {
@@ -151,13 +216,13 @@ export default function ChatsPage() {
             <span className="text-sm font-medium">Todos</span>
           </button>
           <button
-            onClick={() => setActiveFilter('upcoming')}
-            className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl px-5 transition-colors shadow-sm ${activeFilter === 'upcoming'
+            onClick={() => setActiveFilter('active')}
+            className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-xl px-5 transition-colors shadow-sm ${activeFilter === 'active'
               ? 'bg-text-main dark:bg-white text-white dark:text-text-main font-bold'
               : 'bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark hover:bg-gray-50 dark:hover:bg-input-dark text-text-secondary'
               }`}
           >
-            <span className="text-sm font-medium">Próximos</span>
+            <span className="text-sm font-medium">En proceso</span>
           </button>
           <button
             onClick={() => setActiveFilter('completed')}
@@ -175,6 +240,7 @@ export default function ChatsPage() {
               : 'bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark hover:bg-gray-50 dark:hover:bg-input-dark text-text-secondary'
               }`}
           >
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: activeFilter === 'favorites' ? "'FILL' 1" : "'FILL' 0" }}>star</span>
             <span className="text-sm font-medium">Favoritos</span>
           </button>
         </div>
@@ -210,66 +276,138 @@ export default function ChatsPage() {
 
           {!loading && filteredChats.length === 0 && (
             <div className="col-span-full text-text-secondary dark:text-text-muted text-center py-8">
-              No tienes chats todavía. Inicia una conversación desde el planificador.
+              {activeFilter === 'favorites'
+                ? 'No tienes chats favoritos. Marca alguno con la estrella.'
+                : 'No tienes chats que coincidan con los filtros.'}
             </div>
           )}
 
           {filteredChats.map((chat, index) => {
-            const status = statusConfig[chat.status || 'Finalizado'] || statusConfig['Finalizado'];
-            const imageUrl = destinationImages[index % destinationImages.length];
+            const status = statusConfig[getStatus(chat)] || statusConfig['active'];
+            const imageUrl = chat.imagenUrl || destinationImages[index % destinationImages.length];
+            const isDeleting = deletingId === chat.id;
+            const isTogglingFavorite = togglingFavoriteId === chat.id;
 
             return (
-              <button
+              <div
                 key={chat.id}
-                onClick={() => handleChatClick(chat)}
-                className="group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm border border-stroke dark:border-input-dark hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-black/20 hover:border-voaya-primary/30 transition-all duration-300 cursor-pointer h-full text-left"
+                className={`group relative flex flex-col bg-white dark:bg-surface-dark rounded-2xl overflow-hidden shadow-sm border border-stroke dark:border-input-dark hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-black/20 hover:border-voaya-primary/30 transition-all duration-300 cursor-pointer h-full ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}
               >
-                {/* Image */}
-                <div className="relative w-full aspect-[4/3] overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                    style={{ backgroundImage: `url("${imageUrl}")` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+                {/* Card Content - Clickable */}
+                <div
+                  onClick={() => handleChatClick(chat)}
+                  className="flex flex-col flex-1 text-left w-full cursor-pointer"
+                >
+                  {/* Image */}
+                  <div className="relative w-full aspect-[4/3] overflow-hidden">
+                    <div
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                      style={{ backgroundImage: `url("${imageUrl}")` }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
 
-                  {/* Status Badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} text-white shadow-sm backdrop-blur-md border border-white/10`}>
-                      {status.text}
-                    </span>
+                    {/* Status Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${status.bg} text-white shadow-sm backdrop-blur-md border border-white/10`}>
+                        {status.text}
+                      </span>
+                    </div>
+
+                    {/* Favorite Star */}
+                    <div
+                      onClick={(e) => handleToggleFavorite(e, chat)}
+                      role="button"
+                      tabIndex={0}
+                      className={`absolute top-3 right-3 size-8 flex items-center justify-center rounded-full transition-all cursor-pointer ${chat.esFavorito
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-white/20 text-white hover:bg-white/40'
+                        } backdrop-blur-md border border-white/20 ${isTogglingFavorite ? 'opacity-50' : ''}`}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[20px]"
+                        style={{ fontVariationSettings: chat.esFavorito ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        star
+                      </span>
+                    </div>
+
+                    {/* Title Overlay */}
+                    <div className="absolute bottom-0 left-0 p-4 w-full">
+                      <h3 className="text-white text-xl font-bold leading-tight mb-1">
+                        {getTitle(chat)}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-gray-200 text-xs font-medium">
+                        <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                        {getLastMessageAt(chat) ? new Date(getLastMessageAt(chat)).toLocaleDateString('es-ES') : 'Sin fecha'}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Title Overlay */}
-                  <div className="absolute bottom-0 left-0 p-4 w-full">
-                    <h3 className="text-white text-xl font-bold leading-tight mb-1">
-                      {chat.title || 'Sin título'}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-gray-200 text-xs font-medium">
-                      <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                      {chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleDateString('es-ES') : 'Sin fecha'}
-                    </div>
+                  {/* Card Footer */}
+                  <div className="p-4 flex flex-col flex-1">
+                    <p className="text-sm text-text-secondary dark:text-text-muted line-clamp-2 leading-relaxed mb-auto">
+                      {getMetadata(chat)?.destino || 'Conversación de planificación de viaje...'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Card Footer */}
-                <div className="p-4 flex flex-col flex-1">
-                  <p className="text-sm text-text-secondary dark:text-text-muted line-clamp-2 leading-relaxed mb-auto">
-                    {chat.metadata?.description || 'Conversación de planificación de viaje...'}
-                  </p>
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-stroke dark:border-input-dark">
-                    <span className="text-xs text-text-muted font-medium">
-                      ID: {chat.id.slice(0, 8)}...
-                    </span>
-                    <div className="size-8 rounded-full hover:bg-gray-100 dark:hover:bg-input-dark flex items-center justify-center text-text-secondary transition-colors">
+                {/* Actions Row */}
+                <div className="px-4 pb-4 flex items-center justify-between pt-2 border-t border-stroke dark:border-input-dark">
+                  <span className="text-xs text-text-muted font-medium">
+                    ID: {chat.id.slice(0, 8)}...
+                  </span>
+
+                  {/* Menu Button */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(menuOpenId === chat.id ? null : chat.id);
+                      }}
+                      className="size-8 rounded-full hover:bg-gray-100 dark:hover:bg-input-dark flex items-center justify-center text-text-secondary transition-colors"
+                    >
                       <span className="material-symbols-outlined text-[20px]">more_horiz</span>
-                    </div>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {menuOpenId === chat.id && (
+                      <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-surface-dark rounded-xl shadow-lg border border-stroke dark:border-input-dark py-2 z-50">
+                        <button
+                          onClick={(e) => handleToggleFavorite(e, chat)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-input-dark flex items-center gap-2 text-text-main dark:text-white"
+                        >
+                          <span
+                            className="material-symbols-outlined text-[18px]"
+                            style={{ fontVariationSettings: chat.esFavorito ? "'FILL' 1" : "'FILL' 0" }}
+                          >
+                            star
+                          </span>
+                          {chat.esFavorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteChat(e, chat.id)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 text-red-600"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                          Eliminar chat
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
+
+      {/* Click outside to close menu */}
+      {menuOpenId && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setMenuOpenId(null)}
+        />
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Chat, Message } from '@shared/types/chat'; // Assuming shared types exist, or we define interface locally
+import { Mensaje } from '@shared/types/chat'; // Using Spanish type names
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/client';
 
@@ -18,7 +18,7 @@ interface SupabaseMessage {
 
 export default function ChatContainer({ chatId }: { chatId?: string }) {
     // We map Supabase message structure to the component's expected Message interface
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<Mensaje[]>([]);
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
@@ -40,13 +40,13 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
                 .order('fecha_creacion', { ascending: true });
 
             if (data) {
-                const mappedMessages: Message[] = data.map((msg: SupabaseMessage) => ({
+                const mappedMessages: Mensaje[] = data.map((msg: SupabaseMessage) => ({
                     id: msg.id,
                     chatId: cid,
-                    text: msg.contenido,
-                    role: msg.rol,
-                    createdAt: msg.fecha_creacion,
-                    userId: msg.usuario_id
+                    texto: msg.contenido,
+                    rol: msg.rol,
+                    fechaCreacion: msg.fecha_creacion,
+                    usuarioId: msg.usuario_id
                 }));
                 setMessages(mappedMessages);
             }
@@ -67,13 +67,13 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
                 },
                 (payload: any) => {
                     const newMsg = payload.new as SupabaseMessage;
-                    const mappedMsg: Message = {
+                    const mappedMsg: Mensaje = {
                         id: newMsg.id,
                         chatId: cid,
-                        text: newMsg.contenido,
-                        role: newMsg.rol,
-                        createdAt: newMsg.fecha_creacion,
-                        userId: newMsg.usuario_id
+                        texto: newMsg.contenido,
+                        rol: newMsg.rol,
+                        fechaCreacion: newMsg.fecha_creacion,
+                        usuarioId: newMsg.usuario_id
                     };
                     setMessages((prev) => [...prev, mappedMsg]);
                 }
@@ -207,16 +207,16 @@ export default function ChatContainer({ chatId }: { chatId?: string }) {
                 {messages.map((message) => (
                     <div
                         key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                        className={`flex ${message.rol === 'user' ? 'justify-end' : 'justify-start'
                             }`}
                     >
                         <div
-                            className={`max-w-[80%] p-3 rounded-lg ${message.role === 'user'
+                            className={`max-w-[80%] p-3 rounded-lg ${message.rol === 'user'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-gray-200 text-gray-900'
                                 }`}
                         >
-                            {message.text}
+                            {message.texto}
                         </div>
                     </div>
                 ))}

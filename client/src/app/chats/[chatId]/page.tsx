@@ -6,6 +6,8 @@ import ChatView from '@/components/chat/chat-view';
 import { ApiService } from '@/services/api';
 import { getUserIdFromCookie, saveChatIdToCookie } from '@/lib/cookies';
 import { ChatMessage, TravelBrief } from '@/types';
+import { Loader } from '@/components/ui/loader';
+import Link from 'next/link';
 
 export default function ChatPage() {
   const params = useParams() as { chatId?: string };
@@ -23,16 +25,12 @@ export default function ChatPage() {
       return;
     }
 
-    // Save chatId to cookie so ChatView and other parts can use it
     saveChatIdToCookie(chatId);
 
     const load = async () => {
       setLoading(true);
       try {
         const res: any = await ApiService.getChat(chatId);
-        console.log('[ChatPage] Loaded chat data:', res?.chat);
-        console.log('[ChatPage] Chat status:', res?.chat?.status);
-        console.log('[ChatPage] Number of messages:', res?.messages?.length);
         setMessages(res?.messages || []);
         setChatStatus(res?.chat?.status);
       } catch (err: any) {
@@ -56,15 +54,37 @@ export default function ChatPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Cargando chat…</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background gap-4">
+        <Loader />
+        <p className="text-text-secondary dark:text-text-muted">Cargando conversación...</p>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="p-8 text-red-600">{error}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background gap-6 px-4">
+        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <span className="material-symbols-outlined text-red-500 text-3xl">error</span>
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-text-main dark:text-white mb-2">Error al cargar</h2>
+          <p className="text-text-secondary dark:text-text-muted mb-4">{error}</p>
+          <Link
+            href="/chats"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-voaya-primary text-white font-medium hover:bg-voaya-primary-dark transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Volver a chats
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="py-8 md:py-12 min-h-screen bg-gray-50/50">
+    <main className="min-h-screen bg-background-light dark:bg-background">
       <ChatView
         onChatComplete={handleChatComplete}
         error={null}
@@ -73,6 +93,7 @@ export default function ChatPage() {
         userId={getUserIdFromCookie() || undefined}
         chatId={chatId}
       />
-    </div>
+    </main>
   );
 }
+

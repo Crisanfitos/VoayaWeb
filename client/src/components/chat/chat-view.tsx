@@ -3,11 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, TravelBrief } from '@/types';
 import { ApiService } from '@/services/api';
-import { ChatHeader } from './chat-header';
-import { ChatMessages } from './chat-messages';
-import { ChatInput } from './chat-input';
-import { ChatCompletionControls } from './chat-completion-controls';
-import { getUserIdFromCookie, getChatIdFromCookie, saveChatIdToCookie } from '@/lib/cookies';
+import { getUserIdFromCookie, getChatIdFromCookie } from '@/lib/cookies';
+import Link from 'next/link';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
 
@@ -22,7 +19,14 @@ interface ChatViewProps {
   initialStatus?: string;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery, selectedCategories, initialMessages, initialStatus }) => {
+const ChatView: React.FC<ChatViewProps> = ({
+  onChatComplete,
+  error,
+  initialQuery,
+  selectedCategories,
+  initialMessages,
+  initialStatus
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages || []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,36 +35,28 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialMessageSent = useRef(false);
 
-  // Get userId and chatId from cookies
   const userId = getUserIdFromCookie();
   const chatId = getChatIdFromCookie();
 
-  // Log initial status for debugging and detect if chat should show completion buttons
   useEffect(() => {
-    console.log('[ChatView] Initialized with initialStatus:', initialStatus);
-    console.log('[ChatView] Initial messages count:', messages.length);
-    
-    // Show completion buttons if:
-    // 1. Status is 'completed' or 'finished', OR
-    // 2. Status is 'active' and there are messages (chat has content)
-    const shouldShowComplete = 
-      initialStatus && 
-      (initialStatus === 'completed' || 
-       initialStatus === 'finished' || 
-       (initialStatus === 'active' && messages.length > 0));
-    
-    console.log('[ChatView] shouldShowComplete:', shouldShowComplete);
+    const shouldShowComplete =
+      initialStatus &&
+      (initialStatus === 'completed' ||
+        initialStatus === 'finished' ||
+        (initialStatus === 'active' && messages.length > 0));
+
     if (shouldShowComplete && !isChatComplete) {
       setIsChatComplete(true);
     }
   }, [initialStatus, messages.length, isChatComplete]);
 
-  const sendMessage = useCallback(async (text: string) => {
-    console.log(`[ChatView] sendMessage called with: "${text}"`);
-    console.log(`[ChatView] userId: ${userId}, chatId: ${chatId}`);
+  // Auto scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
+  const sendMessage = useCallback(async (text: string) => {
     if (!userId || !chatId) {
-      console.error('[ChatView] Missing userId or chatId from cookies');
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Error: No se pudo identificar tu sesión. Por favor, inicia sesión de nuevo."
@@ -71,12 +67,9 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     setIsLoading(true);
 
     try {
-      console.log(`[ChatView] Calling ApiService.sendMessage...`);
       const response = await ApiService.sendMessage(chatId, text, userId);
-      console.log(`[ChatView] Received response from API:`, response);
 
       if (!response.message || typeof response.message.text !== 'string') {
-        console.error('[ChatView] Invalid response structure:', response);
         throw new Error('Invalid response structure from server');
       }
 
@@ -85,29 +78,21 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
         text: response.message.text
       };
 
-      console.log(`[ChatView] Updating messages state with new message...`);
-      setMessages(prev => {
-        const newMessages = [...prev, modelMessage];
-        console.log(`[ChatView] New messages state:`, newMessages);
-        return newMessages;
-      });
+      setMessages(prev => [...prev, modelMessage]);
 
-      // Check if chat should be marked as complete based on the assistant's message
       if (modelMessage.text.includes("ya tengo una base muy sólida para empezar a buscar")) {
-        console.log(`[ChatView] Chat completion detected from Gemini response.`);
         setIsChatComplete(true);
       }
     } catch (err) {
-      console.error(`[ChatView] Error calling API:`, err);
+      console.error(`[ChatView] Error:`, err);
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: "Lo siento, estoy teniendo problemas para conectarme. Por favor, inténtalo de nuevo."
       }]);
     } finally {
-      console.log(`[ChatView] sendMessage finished.`);
       setIsLoading(false);
     }
-  }, [selectedCategories]);
+  }, [userId, chatId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,17 +128,13 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
   }, [initialQuery, sendMessage]);
 
   const handleConfirm = async () => {
-    // Mark chat as completed before redirecting
     if (chatId) {
       try {
-        console.log('[ChatView] Marking chat as completed...');
         await ApiService.completeChat(chatId);
-        console.log('[ChatView] Chat marked as completed');
       } catch (err) {
         console.error('[ChatView] Error completing chat:', err);
       }
     }
-    // Reload the planner page
     window.location.href = '/plan';
   };
 
@@ -165,110 +146,191 @@ const ChatView: React.FC<ChatViewProps> = ({ onChatComplete, error, initialQuery
     setInternalInitialQuery('');
   };
 
+  const formatTime = (date?: Date) => {
+    const d = date || new Date();
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
-    <div className="container max-w-4xl mx-auto flex flex-col min-h-[700px] bg-gradient-to-b from-white to-gray-50/80 rounded-3xl shadow-xl overflow-hidden border border-gray-100/80">
-      <div className="py-8 px-8 bg-white border-b border-gray-100/80">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Tu próxima aventura te espera ✈️
-            </h1>
-            <p className="text-sm text-gray-500">Charlemos sobre tu próximo viaje</p>
+    <div className="flex flex-col h-full min-h-[calc(100vh-120px)] bg-background-light dark:bg-background">
+      {/* Chat Header */}
+      <div className="sticky top-0 z-10 bg-white dark:bg-surface-dark border-b border-stroke dark:border-input-dark px-4 md:px-8 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/chats" className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-input-dark transition-colors">
+              <span className="material-symbols-outlined text-text-secondary dark:text-text-muted">arrow_back</span>
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-voaya-primary to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <span className="material-symbols-outlined">auto_awesome</span>
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-surface-dark"></div>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-text-main dark:text-white">Voaya AI</h1>
+                <p className="text-xs text-text-secondary dark:text-text-muted flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  {isLoading ? 'Escribiendo...' : 'En línea'}
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100/80">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            <span className="text-sm text-gray-600 font-medium">Voaya está activa</span>
+
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-input-dark transition-colors text-text-secondary dark:text-text-muted">
+              <span className="material-symbols-outlined">more_vert</span>
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Error Banner */}
       {error && (
-        <div className="px-8 py-3 bg-red-50 border-b border-red-100 text-red-600 text-center text-sm font-medium">
-          {error}
+        <div className="px-4 md:px-8 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <p className="text-red-600 dark:text-red-400 text-sm text-center font-medium">{error}</p>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex items-end gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slideIn`}
-          >
-            {msg.role === 'assistant' && (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-inner flex-shrink-0 border-2 border-white">
-                V
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Welcome Message if no messages */}
+          {messages.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-voaya-primary/20 to-indigo-500/20 flex items-center justify-center mb-6">
+                <span className="material-symbols-outlined text-voaya-primary text-4xl">flight_takeoff</span>
               </div>
-            )}
-            <div
-              className={`
-                group max-w-[80%] px-6 py-4 rounded-2xl transition-all duration-200
-                ${msg.role === 'user'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-sm shadow-lg hover:shadow-xl hover:-translate-y-0.5'
-                  : 'bg-white text-gray-700 rounded-bl-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 border border-gray-100'
-                }
-              `}
-            >
-              <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-            </div>
-          </div>
-        ))}
+              <h2 className="text-xl font-bold text-text-main dark:text-white mb-2">
+                ¡Hola! Soy tu asistente de viajes
+              </h2>
+              <p className="text-text-secondary dark:text-text-muted max-w-md">
+                Cuéntame sobre tu próximo viaje. ¿A dónde te gustaría ir? ¿Cuándo? ¿Con quién?
+              </p>
 
-        {isLoading && (
-          <div className="flex items-end gap-4 justify-start animate-slideIn">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-inner flex-shrink-0 border-2 border-white">
-              V
-            </div>
-            <div className="max-w-[80%] px-5 py-4 rounded-2xl bg-white shadow-md border border-gray-100 rounded-bl-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0.4s]"></div>
+              {/* Quick suggestions */}
+              <div className="flex flex-wrap gap-2 mt-6 justify-center">
+                {['París en mayo', 'Playa con familia', 'Escapada romántica', 'Aventura en Asia'].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setInput(suggestion);
+                    }}
+                    className="px-4 py-2 rounded-full bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark text-sm font-medium text-text-secondary dark:text-text-muted hover:border-voaya-primary hover:text-voaya-primary transition-colors shadow-sm"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+
+          {/* Messages */}
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {/* Assistant Avatar */}
+              {msg.role === 'assistant' && (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-voaya-primary to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md">
+                  <span className="material-symbols-outlined text-lg">auto_awesome</span>
+                </div>
+              )}
+
+              {/* Message Bubble */}
+              <div
+                className={`
+                  max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl
+                  ${msg.role === 'user'
+                    ? 'bg-voaya-primary text-white rounded-br-md shadow-lg shadow-voaya-primary/20'
+                    : 'bg-white dark:bg-surface-dark text-text-main dark:text-white rounded-bl-md shadow-md border border-stroke/50 dark:border-input-dark'
+                  }
+                `}
+              >
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                <p className={`text-[10px] mt-1.5 ${msg.role === 'user' ? 'text-white/60' : 'text-text-muted'}`}>
+                  {formatTime()}
+                </p>
+              </div>
+
+              {/* User Avatar */}
+              {msg.role === 'user' && (
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-input-dark flex items-center justify-center text-text-secondary dark:text-text-muted flex-shrink-0 shadow-sm">
+                  <span className="material-symbols-outlined text-lg">person</span>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Typing Indicator */}
+          {isLoading && (
+            <div className="flex items-end gap-3 justify-start">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-voaya-primary to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md">
+                <span className="material-symbols-outlined text-lg">auto_awesome</span>
+              </div>
+              <div className="px-5 py-4 rounded-2xl bg-white dark:bg-surface-dark shadow-md border border-stroke/50 dark:border-input-dark rounded-bl-md">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-voaya-primary animate-bounce"></div>
+                  <div className="w-2 h-2 rounded-full bg-voaya-primary animate-bounce [animation-delay:0.15s]"></div>
+                  <div className="w-2 h-2 rounded-full bg-voaya-primary animate-bounce [animation-delay:0.3s]"></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <div className="p-8 bg-white border-t border-gray-100/80">
-        {isChatComplete ? (
-          <div className="flex items-center justify-center gap-6">
-            <button
-              onClick={handleRestart}
-              className="px-8 py-4 rounded-full bg-gray-50 text-gray-700 font-medium hover:bg-gray-100 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-2 shadow-sm hover:shadow"
-            >
-              Reiniciar Chat
-            </button>
-            <button
-              onClick={handleConfirm}
-              className="px-10 py-4 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md hover:shadow-lg"
-            >
-              Confirmar y Buscar
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ej.: París, 2 personas, mayo..."
-                className="w-full px-6 py-4 bg-gray-50 text-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 placeholder:text-gray-400 shadow-sm hover:shadow-md"
-                disabled={isLoading}
-              />
+      {/* Input Area */}
+      <div className="sticky bottom-0 bg-white dark:bg-surface-dark border-t border-stroke dark:border-input-dark px-4 md:px-8 py-4">
+        <div className="max-w-4xl mx-auto">
+          {isChatComplete ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleRestart}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gray-100 dark:bg-input-dark text-text-main dark:text-white font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
+                Reiniciar Chat
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-voaya-primary text-white font-semibold hover:bg-voaya-primary-dark transition-colors shadow-lg shadow-voaya-primary/30"
+              >
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+                Confirmar y Buscar
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="p-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md hover:shadow-lg"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
-            </button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={handleSubmit} className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Escribe tu mensaje..."
+                  className="w-full px-5 py-3.5 pr-12 bg-gray-100 dark:bg-input-dark text-text-main dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-voaya-primary focus:bg-white dark:focus:bg-surface-dark transition-all placeholder:text-text-muted"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-voaya-primary transition-colors"
+                >
+                  <span className="material-symbols-outlined text-xl">mood</span>
+                </button>
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="flex-shrink-0 p-3.5 rounded-xl bg-voaya-primary text-white hover:bg-voaya-primary-dark disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg disabled:shadow-none"
+              >
+                <span className="material-symbols-outlined text-xl">send</span>
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
