@@ -99,11 +99,13 @@ export default function MyTripsPage() {
       setError(null);
 
       try {
-        const response = await ApiService.obtenerViajes(userId, activeTab);
-        setViajes(response.viajes || []);
+        const result = await ApiService.obtenerViajes(userId, activeTab as TabType);
+
+        // The API returns { viajes: [...] }
+        setViajes(result.viajes || []);
+
       } catch (err: any) {
         console.error('Error cargando viajes:', err);
-        // Solo mostrar error si no es un 404 o similar
         if (err?.message?.includes('404')) {
           setViajes([]);
         } else {
@@ -115,7 +117,6 @@ export default function MyTripsPage() {
       }
     };
 
-    // Cargar viajes si hay usuario O si forceReady y hay userId en cookie
     const userId = getUserIdFromCookie();
     if (user || (forceReady && userId)) {
       cargarViajes();
@@ -268,15 +269,34 @@ export default function MyTripsPage() {
                 >
                   {/* Status Badge */}
                   <div className="absolute top-4 left-4 z-20">
-                    {viaje.estado === 'confirmado' ? (
+                    {viaje.estado === 'confirmado' && (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
                         <span className="size-1.5 rounded-full bg-white"></span>
                         Confirmado
                       </span>
-                    ) : (
+                    )}
+                    {viaje.estado === 'planificando' && (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-voaya-primary/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
                         <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
-                        {viaje.estado === 'planificando' ? 'IA Refinando...' : 'En proceso'}
+                        Planificando
+                      </span>
+                    )}
+                    {viaje.estado === 'borrador' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+                        <span className="material-symbols-outlined text-[14px]">edit_note</span>
+                        Borrador
+                      </span>
+                    )}
+                    {viaje.estado === 'completado' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-600/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        Completado
+                      </span>
+                    )}
+                    {viaje.estado === 'cancelado' && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/90 px-3 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+                        <span className="material-symbols-outlined text-[14px]">cancel</span>
+                        Cancelado
                       </span>
                     )}
                   </div>
@@ -317,7 +337,7 @@ export default function MyTripsPage() {
                     </div>
 
                     {viaje.estado === 'confirmado' ? (
-                      <Link href={`/viajes/${viaje.id}`}>
+                      <Link href={`/my-trips/${viaje.id}`}>
                         <button className="mt-2 w-full flex items-center justify-center gap-2 rounded-lg bg-white py-3 text-sm font-bold text-voaya-primary hover:bg-blue-50 transition-colors shadow-sm">
                           <span>Ver Itinerario</span>
                           <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -329,7 +349,7 @@ export default function MyTripsPage() {
                           <span className="material-symbols-outlined text-[18px]">tune</span>
                           <span>Preferencias</span>
                         </button>
-                        <Link href={`/viajes/${viaje.id}`} className="flex-1">
+                        <Link href={`/my-trips/${viaje.id}`} className="flex-1">
                           <button className="w-full flex items-center justify-center gap-2 rounded-lg bg-voaya-primary py-3 text-sm font-bold text-white hover:bg-voaya-primary-dark transition-colors shadow-sm">
                             <span>Ver Estado</span>
                           </button>
@@ -351,7 +371,7 @@ export default function MyTripsPage() {
                 const imagen = viaje.imagenUrl || obtenerImagenPlaceholder(index);
 
                 return (
-                  <Link key={viaje.id} href={`/viajes/${viaje.id}`}>
+                  <Link key={viaje.id} href={`/my-trips/${viaje.id}`}>
                     <div
                       className={`p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-input-dark transition-colors cursor-pointer group ${index === 0 ? 'rounded-t-2xl' : ''
                         } ${index === viajes.length - 1 ? 'rounded-b-2xl' : ''}`}
@@ -377,6 +397,21 @@ export default function MyTripsPage() {
                         {viaje.estado === 'borrador' && (
                           <span className="inline-flex items-center rounded-md bg-gray-50 dark:bg-gray-900/20 px-2.5 py-1 text-xs font-bold text-gray-700 dark:text-gray-400 ring-1 ring-inset ring-gray-600/20">
                             Borrador
+                          </span>
+                        )}
+                        {viaje.estado === 'planificando' && (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-600/20">
+                            Planificando
+                          </span>
+                        )}
+                        {viaje.estado === 'confirmado' && (
+                          <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 ring-1 ring-inset ring-emerald-600/20">
+                            Confirmado
+                          </span>
+                        )}
+                        {viaje.estado === 'cancelado' && (
+                          <span className="inline-flex items-center rounded-md bg-red-50 dark:bg-red-900/20 px-2.5 py-1 text-xs font-bold text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20">
+                            Cancelado
                           </span>
                         )}
                       </div>

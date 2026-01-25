@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackgroundCarousel } from "@/components/ui/background-carousel";
 
 export function HeroSection() {
   return (
@@ -6,11 +7,15 @@ export function HeroSection() {
       <div className="max-w-[1280px] mx-auto px-4 sm:px-10 py-8 sm:py-12 lg:py-20">
         <div className="rounded-3xl overflow-hidden relative min-h-[560px] flex flex-col items-center justify-center p-6 sm:p-12 text-center isolate shadow-2xl shadow-slate-900/20">
           {/* Background Image */}
-          <div
-            className="absolute inset-0 z-[-1] bg-cover bg-center"
-            style={{
-              backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.3) 0%, rgba(15, 23, 42, 0.6) 100%), url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=2070&auto=format&fit=crop")`
-            }}
+          {/* Background Carousel */}
+          <BackgroundCarousel
+            images={[
+              "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=2070&auto=format&fit=crop", // Mountain
+              "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2073&auto=format&fit=crop", // Beach
+              "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=2672&auto=format&fit=crop", // City
+              "https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=2074&auto=format&fit=crop", // Nature
+              "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=2073&auto=format&fit=crop", // Culture
+            ]}
           />
 
           {/* Content */}

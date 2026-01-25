@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
+import { BackgroundCarousel } from '@/components/ui/background-carousel';
 import ChatView from '@/components/chat/chat-view';
 import { TravelPlan, TravelBrief } from '@/types';
 import { generatePlan } from '@/app/actions/chat-actions';
@@ -127,7 +128,8 @@ function PlanPageComponent() {
       }
 
       saveChatIdToCookie(chatResponse.chatId);
-      setCurrentView('chat');
+      // Redirigir a la ruta del chat con el mensaje inicial como parámetro
+      router.push(`/chats/${chatResponse.chatId}?initialQuery=${encodeURIComponent(tripDescription)}`);
     } catch (error) {
       console.error('Failed to create chat:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -236,25 +238,31 @@ function PlanPageComponent() {
       <section className="relative flex flex-col items-center justify-center px-4 py-16 md:py-24 lg:py-32 overflow-hidden">
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-background-light/90 dark:from-background-dark/90 via-background-light/80 dark:via-background-dark/80 to-background-light dark:to-background-dark z-10" />
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{
-              backgroundImage: `url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=2070&auto=format&fit=crop")`
-            }}
+          <BackgroundCarousel
+            images={[
+              "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=2070&auto=format&fit=crop", // Switzerland/Mountain
+              "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?q=80&w=2574&auto=format&fit=crop", // Tropical Beach
+              "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?q=80&w=2070&auto=format&fit=crop", // NYC City
+              "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=2070&auto=format&fit=crop", // Lake/Nature
+              "https://images.unsplash.com/photo-1528164344705-47542687000d?q=80&w=2092&auto=format&fit=crop", // Japan Night
+            ]}
+            overlayGradient="linear-gradient(to bottom, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.6) 50%, rgba(15, 23, 42, 0.9) 100%)"
+            className=""
           />
+          {/* Subtle gradient at the bottom to blend with content */}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background-light dark:to-background z-10 pointer-events-none" />
         </div>
 
         <div className="relative z-20 flex flex-col items-center max-w-[800px] w-full text-center gap-6 md:gap-8">
           {/* Text Content */}
           <div className="flex flex-col gap-4">
-            <h1 className="text-text-main dark:text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-[-0.033em]">
+            <h1 className="text-white text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-[-0.033em] drop-shadow-lg">
               Diseña tu próxima{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-voaya-primary to-blue-400">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-white">
                 aventura con IA
               </span>
             </h1>
-            <p className="text-text-secondary dark:text-text-muted text-base md:text-lg font-normal leading-relaxed max-w-2xl mx-auto">
+            <p className="text-slate-100 text-base md:text-lg font-normal leading-relaxed max-w-2xl mx-auto drop-shadow-md">
               Cuéntanos qué buscas y crearemos el itinerario perfecto para ti en segundos.
             </p>
           </div>
@@ -266,8 +274,8 @@ function PlanPageComponent() {
                 key={option.id}
                 onClick={() => handleSearchTypeToggle(option.id)}
                 className={`flex items-center gap-2 h-10 px-5 rounded-xl font-bold text-sm transition-all ${selectedCategories.has(option.id)
-                    ? 'bg-voaya-primary text-white shadow-lg shadow-voaya-primary/20'
-                    : 'bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark text-text-secondary dark:text-text-muted hover:border-voaya-primary hover:text-voaya-primary'
+                  ? 'bg-voaya-primary text-white shadow-lg shadow-voaya-primary/20'
+                  : 'bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark text-text-secondary dark:text-text-muted hover:border-voaya-primary hover:text-voaya-primary'
                   }`}
               >
                 <span className="material-symbols-outlined text-[18px]">{option.icon}</span>

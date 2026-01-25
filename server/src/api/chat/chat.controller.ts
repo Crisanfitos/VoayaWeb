@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../../supabase/admin';
-import { geminiService } from '../../services/ai/gemini-simple.service';
+import { aiRouter } from '../../services/ai/ai-router.service';
+import { buildSystemPrompt } from '../../services/ai/system-prompts';
+import type { ChatMessage } from '../../services/ai/types';
 
 const router = Router();
 
@@ -125,50 +127,96 @@ router.post('/message', async (req, res) => {
             .single();
 
         const categories = chatData?.categorias || [];
-        console.log('[Chat API] Sending message to Gemini for categories:', categories);
+        console.log('[Chat API] Sending message with AI Router, categories:', categories);
 
-        // Get AI response from Gemini
-        let aiResponse = '';
-        try {
-            aiResponse = await geminiService.sendMessage(chatId, text);
-            console.log('[Chat API] Gemini response:', aiResponse);
-        } catch (error) {
-            console.error('[Chat API] Error calling Gemini:', error);
-            aiResponse = 'Lo siento, estoy teniendo problemas para conectarme. Por favor, inténtalo de nuevo.';
+        // Get user preferences for personalized system prompt
+        let userPreferences = null;
+        if (userId) {
+            const { data: userData } = await supabaseAdmin
+                .from('usuarios')
+                .select('preferencias_ia')
+                .eq('id', userId)
+                .single();
+            userPreferences = userData?.preferencias_ia;
         }
 
-        // Save AI response
-        await supabaseAdmin.from('mensajes').insert({
-            chat_id: chatId,
-            usuario_id: null,
-            rol: 'assistant',
-            contenido: aiResponse,
-        });
+        // Build personalized system prompt based on chat categories
+        const systemPrompt = buildSystemPrompt(categories, userPreferences);
 
-        // Update chat's lastMessageAt
-        await supabaseAdmin
-            .from('chats')
-            .update({ ultimo_mensaje_en: new Date().toISOString() })
-            .eq('id', chatId);
+        // Get previous messages for context
+        const { data: previousMessages } = await supabaseAdmin
+            .from('mensajes')
+            .select('rol, contenido')
+            .eq('chat_id', chatId)
+            .order('fecha_creacion', { ascending: true })
+            .limit(20);
 
-        res.json({
-            chatId,
-            message: {
-                role: 'assistant',
-                text: aiResponse
+        // Build messages array for AI (excluding current as it's not saved yet)
+        const contextMessages: ChatMessage[] = (previousMessages || []).map(m => ({
+            role: m.rol as 'user' | 'assistant' | 'system',
+            content: m.contenido
+        }));
+
+        // Add current message to form complete message list
+        const messages: ChatMessage[] = [...contextMessages, { role: 'user', content: text }];
+
+        // Log context for debugging
+        console.log(`[Chat API] Context: ${contextMessages.length} previous messages + 1 new = ${messages.length} total`);
+
+        // Get AI response with automatic model selection (STREAMING)
+        let aiResponseFull = '';
+
+        try {
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Transfer-Encoding', 'chunked');
+
+            const stream = aiRouter.sendMessageStream(messages, systemPrompt);
+
+            for await (const chunk of stream) {
+                res.write(chunk);
+                aiResponseFull += chunk;
             }
-        });
+            res.end();
+        } catch (error) {
+            console.error('[Chat API] Error calling AI:', error);
+            if (!res.headersSent) {
+                res.status(503).json({ error: 'AI service unavailable. Please try again later.' });
+            } else {
+                res.end();
+            }
+            return;
+        }
+
+        // Save AI response (AFTER streaming is complete)
+        if (aiResponseFull) {
+            await supabaseAdmin.from('mensajes').insert({
+                chat_id: chatId,
+                usuario_id: userId || null,  // Same user as the chat owner
+                rol: 'assistant',
+                contenido: aiResponseFull,
+            });
+
+            // Update chat's lastMessageAt
+            await supabaseAdmin
+                .from('chats')
+                .update({ ultimo_mensaje_en: new Date().toISOString() })
+                .eq('id', chatId);
+        }
     } catch (error) {
         console.error('Error in message endpoint:', error);
         res.status(500).json({ error: 'Failed to process message' });
     }
 });
 
-// Mark chat as completed and optionally trigger an outbound webhook to process the chat
+// Mark chat as completed and trigger the Python agents microservice for analysis
 router.post('/complete', async (req, res) => {
     try {
-        const { chatId } = req.body;
+        const { chatId, forceRewrite } = req.body;
         if (!chatId) return res.status(400).json({ error: 'chatId required' });
+
+        const userId = (req as any).user?.id; // Assuming auth middleware attached user, otherwise check body or session
+        // If req.user is not available, we need to get user from chat or body
+        // For now let's get chat data first
 
         const { data: chatData, error: chatError } = await supabaseAdmin
             .from('chats')
@@ -178,15 +226,43 @@ router.post('/complete', async (req, res) => {
 
         if (chatError || !chatData) return res.status(404).json({ error: 'Chat not found' });
 
+        const effectiveUserId = userId || chatData.usuario_id;
+
+        // CHECK EXISTING TRIP
+        const { data: existingTrip } = await supabaseAdmin
+            .from('viajes')
+            .select('id')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (existingTrip) {
+            if (!forceRewrite) {
+                // Return existing trip so frontend can prompt user
+                return res.json({
+                    ok: true,
+                    existingTrip: { id: existingTrip.id },
+                    message: 'Trip already exists for this chat'
+                });
+            } else {
+                // Force Rewrite: Delete existing trip (careful with cascading?) or Update?
+                // User asked "borrar todos los datos significa simplemente reescribir"
+                // Let's delete the old one to ensure clean slate or update it.
+                // Creating a NEW implementation would be cleaner if we just delete the old one.
+                await supabaseAdmin.from('viajes').delete().eq('id', existingTrip.id);
+            }
+        }
+
+        // Mark as completed and set processing status
         await supabaseAdmin
             .from('chats')
             .update({
                 estado: 'completed',
-                ultimo_mensaje_en: new Date().toISOString()
+                ultimo_mensaje_en: new Date().toISOString(),
+                metadatos: { ...chatData.metadatos, processing_status: 'extracting' }
             })
             .eq('id', chatId);
 
-        // Gather chat data to send to external agent
+        // Gather chat data
         const { data: messages } = await supabaseAdmin
             .from('mensajes')
             .select('*')
@@ -196,24 +272,85 @@ router.post('/complete', async (req, res) => {
         const formattedMessages = messages?.map(mapMessageToApi) || [];
         const formattedChat = mapChatToApi(chatData);
 
-        const webhookUrl = process.env.N8N_WEBHOOK_URL;
+        const agentsUrl = process.env.AGENTS_URL || 'http://localhost:3003';
         const webhookSecret = process.env.WEBHOOK_SECRET;
-        const systemPrompt = process.env.N8N_SYSTEM_PROMPT || `Eres un agente que extrae metadatos de una conversación de planificación de viajes.
-Recibe un objeto 'chat' y un array 'messages' con el historial. Devuelve un objeto JSON con los campos relevantes para planificar: destination, dates.start, dates.end, travelers, categories, and any preferences or notes. Usa ISO-8601 para fechas. Asegúrate de incluir chatId en la respuesta.`;
 
-        if (webhookUrl) {
-            try {
-                await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat: formattedChat, messages: formattedMessages, secret: webhookSecret, systemPrompt })
-                });
-            } catch (err) {
-                console.error('Failed to call webhook:', err);
+        // 1. SYNC EXTRACTION
+        console.log(`[Chat Complete] Requesting extraction for chat ${chatId}`);
+        let extractedData = null;
+        try {
+            const extractRes = await fetch(`${agentsUrl}/extract`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat: formattedChat,
+                    messages: formattedMessages,
+                    secret: webhookSecret
+                })
+            });
+
+            if (extractRes.ok) {
+                extractedData = await extractRes.json();
+            } else {
+                console.error('[Chat Complete] Extraction failed', await extractRes.text());
             }
+        } catch (e) {
+            console.error('[Chat Complete] Extraction error', e);
         }
 
-        res.json({ ok: true });
+        // 2. CREATE TRIP (VIAJE)
+        const viajeData = {
+            usuario_id: effectiveUserId,
+            chat_id: chatId,
+            destino: extractedData?.destination_name || extractedData?.destination || chatData.titulo || 'Destino por definir',
+            fecha_inicio: extractedData?.departure_date || null,
+            fecha_fin: extractedData?.return_date || null,
+            estado: 'planificando',
+            metadatos: {
+                extracted_data: extractedData,
+                flight_status: 'searching', // Initial status
+                created_from_chat: true
+            }
+        };
+
+        const { data: viaje, error: viajeError } = await supabaseAdmin
+            .from('viajes')
+            .insert(viajeData)
+            .select('id')
+            .single();
+
+        if (viajeError) {
+            console.error('[Chat Complete] Failed to create voyage', viajeError);
+            throw viajeError;
+        }
+
+        const tripId = viaje.id;
+        console.log(`[Chat Complete] Trip created: ${tripId}`);
+
+        // 3. ASYNC SEARCH (Fire and Forget)
+        if (extractedData && extractedData.extraction_confidence > 0.4) {
+            // Only search if we have decent data
+            fetch(`${agentsUrl}/search-flights`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tripId: tripId,
+                    extracted_data: extractedData,
+                    secret: webhookSecret
+                })
+            }).catch(err => {
+                console.error('[Chat Complete] Failed to trigger flight search:', err);
+            });
+        }
+
+        // 4. RETURN RESPONSE WITH TRIP ID
+        res.json({
+            ok: true,
+            message: 'Trip created and search started',
+            tripId: tripId,
+            extractedData
+        });
+
     } catch (error) {
         console.error('Error completing chat:', error);
         res.status(500).json({ error: 'Failed to complete chat' });

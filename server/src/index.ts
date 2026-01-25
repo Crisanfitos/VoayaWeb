@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 
 // Cargar variables de entorno según el ambiente
 const envPath = process.env.NODE_ENV === 'production'
@@ -41,13 +42,33 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check endpoint
+// Rate limiting configuration
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // 100 requests per 15 minutes
+    message: { error: 'Too many requests, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const chatLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // 30 messages per minute
+    message: { error: 'Too many messages, please wait a moment' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', generalLimiter);
+
+// Health check endpoint (not rate limited)
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Rutas API
-app.use('/api/chat', chatRoutes);
+// Rutas API (chat has additional stricter limit)
+app.use('/api/chat', chatLimiter, chatRoutes);
 app.use('/api/vuelos', vueloRoutes);
 app.use('/api/hoteles', hotelRoutes);
 app.use('/api/viajes', viajeRoutes);
@@ -64,9 +85,20 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
     });
 });
 
-// Iniciar servidor
-app.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-    console.log(`Health check available at http://localhost:${port}/health`);
-});
-// Server initialized
+// Exportar app para tests
+export default app;
+
+// Iniciar servidor solo si no es test
+if (require.main === module) {
+    // Start monitoring dashboard
+    import('./services/ai/monitoring-server').then(({ startMonitoringServer }) => {
+        startMonitoringServer();
+    }).catch(err => {
+        console.warn('Could not start monitoring server:', err.message);
+    });
+
+    app.listen(port, () => {
+        console.log(`🚀 Server running on port ${port}`);
+        console.log(`Health check available at http://localhost:${port}/health`);
+    });
+}

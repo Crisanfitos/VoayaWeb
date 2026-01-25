@@ -7,39 +7,26 @@ type TabViajes = 'programados' | 'borradores' | 'pasados';
 export class ApiService {
     private static async fetchApi(endpoint: string, options: RequestInit = {}) {
         const url = `${API_URL}${endpoint}`;
+
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.status} - ${errorText}`);
+        }
+
+        const responseText = await response.text();
+
         try {
-            console.log(`[ApiService] Fetching ${url}`, { method: options.method });
-
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers,
-                },
-            });
-
-            console.log(`[ApiService] Response received with status: ${response.status}`);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[ApiService] API error: ${response.status}`, errorText);
-                throw new Error(`API error: ${response.status} - ${errorText}`);
-            }
-
-            const responseText = await response.text();
-            console.log(`[ApiService] Raw response text:`, responseText);
-
-            try {
-                const data = JSON.parse(responseText);
-                console.log(`[ApiService] Parsed response:`, data);
-                return data;
-            } catch (error) {
-                console.error(`[ApiService] Error parsing JSON:`, error);
-                return { success: true, data: responseText };
-            }
-        } catch (error: any) {
-            console.error(`[ApiService] Fetch error:`, error);
-            throw error;
+            return JSON.parse(responseText);
+        } catch {
+            return { success: true, data: responseText };
         }
     }
 
@@ -61,10 +48,31 @@ export class ApiService {
         });
     }
 
-    static async completeChat(chatId: string) {
+    static async sendMessageStream(chatId: string, text: string, userId: string): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+        const url = `${API_URL}/chat/message`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ chatId, text, userId }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        if (!response.body) {
+            throw new Error('Response body is empty');
+        }
+
+        return response.body.getReader();
+    }
+
+    static async completeChat(chatId: string, forceRewrite = false) {
         return this.fetchApi('/chat/complete', {
             method: 'POST',
-            body: JSON.stringify({ chatId }),
+            body: JSON.stringify({ chatId, forceRewrite }),
         });
     }
 

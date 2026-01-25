@@ -12,7 +12,7 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { useUser, useAuth } from "@/lib/auth";
+import { useUser, useAuth, useDoc } from "@/lib/auth";
 import { clearVoayaCookies } from "@/lib/cookies";
 
 const publicNavLinks = [
@@ -33,6 +33,7 @@ export function Navbar() {
   const [hasScrolled, setHasScrolled] = useState(false);
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const { data: userProfile } = useDoc('usuarios', user?.id);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -100,8 +101,12 @@ export function Navbar() {
                 Salir
               </button>
               <Link href="/settings">
-                <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white dark:border-input-dark shadow-sm bg-slate-200 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-text-secondary">person</span>
+                <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white dark:border-input-dark shadow-sm bg-slate-200 flex items-center justify-center overflow-hidden">
+                  {userProfile?.foto_perfil ? (
+                    <img src={userProfile.foto_perfil} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-text-secondary">person</span>
+                  )}
                 </div>
               </Link>
             </>

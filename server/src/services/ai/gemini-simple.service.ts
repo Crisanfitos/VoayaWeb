@@ -135,6 +135,31 @@ Limitación: Si el cliente pregunta por hoteles o actividades, responde amableme
         }
     }
 
+    public async sendMessageStream(chatId: string, text: string): Promise<AsyncGenerator<string, void, unknown> | null> {
+        if (!this.initialized || !this.ai) {
+            console.error('Gemini not initialized, cannot stream');
+            return null;
+        }
+
+        try {
+            console.log(`[GeminiService] Streaming message for chatId ${chatId}:`, text);
+            const chat = this.getChatSession(chatId);
+            const result = await chat.sendMessageStream(text);
+
+            async function* streamGenerator() {
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
+                    yield chunkText;
+                }
+            }
+
+            return streamGenerator();
+        } catch (error) {
+            console.error('[GeminiService] Error calling Gemini stream:', error);
+            throw error;
+        }
+    }
+
     private getMockResponse(userText: string): string {
         if (userText.toLowerCase().includes('parís')) {
             return 'De acuerdo, he entendido que queréis volar a París en junio para 2 personas. ¿Es correcto?\\n\\nPara poder ayudaros mejor, me gustaría saber, ¿desde qué aeropuerto o ciudad os gustaría salir?';

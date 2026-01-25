@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+
 
 // Tipos de chat
 export type ChatStatus = 'active' | 'completed' | 'archived';
@@ -24,11 +24,11 @@ export interface ChatMetadata {
 export interface Chat {
     id: string;
     userId: string | null;
-    createdAt: Timestamp;
+    createdAt: string;
     title: string;
     status: ChatStatus;
     categories: ChatCategory[];
-    lastMessageAt: Timestamp;
+    lastMessageAt: string;
     metadata: ChatMetadata;
 }
 
@@ -38,7 +38,7 @@ export interface Message {
     chatId: string;
     role: MessageRole;
     text: string;
-    createdAt: Timestamp;
+    createdAt: string;
     userId?: string | null;
 }
 

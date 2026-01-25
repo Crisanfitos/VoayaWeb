@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useDoc, useAuth } from '@/lib/auth';
+import { useUser, useDoc, useAuth, useSupabase } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Loader } from '@/components/ui/loader';
@@ -57,11 +57,13 @@ export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const auth = useAuth();
+  const supabase = useSupabase();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<SidebarTab>('profile');
   const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // AI Preferences state
   const [aiPreferences, setAiPreferences] = useState({
@@ -120,6 +122,47 @@ export default function SettingsPage() {
     }
   }, [userProfile, user, profileForm]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !user) {
+      return;
+    }
+    setIsUploading(true);
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      await updateDocumentNonBlocking('usuarios', user.id, {
+        foto_perfil: publicUrl
+      });
+
+      toast({
+        title: 'Foto actualizada',
+        description: 'Tu foto de perfil se ha actualizado correctamente.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error al subir imagen',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleProfileUpdate = (values: z.infer<typeof profileFormSchema>) => {
     if (!user) return;
     updateDocumentNonBlocking('usuarios', user.id, {
@@ -137,7 +180,9 @@ export default function SettingsPage() {
     if (!user) return;
     setIsSavingPreferences(true);
     try {
-      await ApiService.actualizarPreferenciasIA(user.id, aiPreferences);
+      await updateDocumentNonBlocking('usuarios', user.id, {
+        preferencias_ia: aiPreferences
+      });
       toast({
         title: 'Preferencias Guardadas',
         description: 'Tus preferencias de IA han sido actualizadas.',
@@ -267,8 +312,19 @@ export default function SettingsPage() {
         {/* Profile Header Card */}
         <div className="bg-white dark:bg-surface-dark rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6 border border-stroke dark:border-input-dark shadow-soft">
           <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-            <div className="size-24 rounded-full bg-gradient-to-br from-voaya-primary to-blue-400 flex items-center justify-center text-white shadow-xl border-4 border-white dark:border-input-dark">
-              <span className="material-symbols-outlined text-4xl">person</span>
+            <div className="relative size-24">
+              <div className="size-24 rounded-full bg-gradient-to-br from-voaya-primary to-blue-400 flex items-center justify-center text-white shadow-xl border-4 border-white dark:border-input-dark overflow-hidden">
+                {userProfile?.foto_perfil ? (
+                  <img src={userProfile.foto_perfil} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-4xl">person</span>
+                )}
+              </div>
+              {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                  <Loader />
+                </div>
+              )}
             </div>
             <div className="flex flex-col">
               <h2 className="text-2xl font-bold text-text-main dark:text-white">
@@ -284,9 +340,22 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <button className="bg-white dark:bg-surface-darker hover:bg-slate-50 dark:hover:bg-input-dark text-text-main dark:text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all border border-stroke dark:border-input-dark shadow-sm hover:shadow-md hover:-translate-y-0.5">
-            Cambiar Foto
-          </button>
+          <div className="relative">
+            <input
+              type="file"
+              id="avatar-upload"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+              disabled={isUploading}
+            />
+            <label
+              htmlFor="avatar-upload"
+              className={`bg-white dark:bg-surface-darker hover:bg-slate-50 dark:hover:bg-input-dark text-text-main dark:text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all border border-stroke dark:border-input-dark shadow-sm hover:shadow-md hover:-translate-y-0.5 cursor-pointer ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              {isUploading ? 'Subiendo...' : 'Cambiar Foto'}
+            </label>
+          </div>
         </div>
 
         {/* Form Grid */}
@@ -400,6 +469,11 @@ export default function SettingsPage() {
                   Notamos que disfrutas de climas cálidos. Ajustar tu preferencia hacia &quot;Playa&quot; mejorará tus recomendaciones en un 30%.
                 </p>
               </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={handleSavePreferences} className="bg-voaya-primary hover:bg-voaya-primary-dark text-white font-bold rounded-lg px-6 py-2.5">
+                Guardar Preferencias
+              </Button>
             </div>
 
             {/* Sliders */}

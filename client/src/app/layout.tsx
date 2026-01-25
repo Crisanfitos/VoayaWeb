@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme-provider';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export const metadata: Metadata = {
   title: 'Voaya: Tu Compañero de Viaje con IA',
@@ -48,7 +49,9 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider>
             <Navbar />
-            <main className="min-h-screen">{children}</main>
+            <ErrorBoundary>
+              <main className="min-h-screen">{children}</main>
+            </ErrorBoundary>
             <Footer />
           </ThemeProvider>
         </AuthProvider>

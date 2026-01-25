@@ -41,18 +41,16 @@ router.get('/', async (req, res) => {
         // Filtrar por tab
         switch (tab) {
             case 'programados':
-                // Viajes confirmados o en planificación con fecha futura
-                query = query
-                    .in('estado', ['planificando', 'confirmado'])
-                    .gte('fecha_inicio', ahora);
+                // Viajes en planificación o confirmados (activos)
+                query = query.in('estado', ['planificando', 'confirmado']);
                 break;
             case 'borradores':
                 // Viajes en estado borrador
                 query = query.eq('estado', 'borrador');
                 break;
             case 'pasados':
-                // Viajes completados o con fecha pasada
-                query = query.or(`estado.eq.completado,fecha_fin.lt.${ahora}`);
+                // Viajes completados o cancelados
+                query = query.in('estado', ['completado', 'cancelado']);
                 break;
         }
 
@@ -60,32 +58,58 @@ router.get('/', async (req, res) => {
 
         if (viajesError) throw viajesError;
 
-        // Para cada viaje, obtener sus vuelos y hoteles
-        const viajes: Viaje[] = await Promise.all(
-            viajesData.map(async (viajeDB) => {
-                const viajeBase = mapearViajeDesdeBD(viajeDB);
+        // Early return if no viajes
+        if (!viajesData || viajesData.length === 0) {
+            return res.json({ viajes: [] });
+        }
 
-                // Obtener vuelos del viaje
-                const { data: vuelosData } = await supabaseAdmin
-                    .from('vuelos')
-                    .select('*')
-                    .eq('viaje_id', viajeDB.id)
-                    .order('fecha_salida', { ascending: true });
+        // OPTIMIZACIÓN: Batch queries en lugar de N+1
+        const viajeIds = viajesData.map(v => v.id);
 
-                // Obtener hoteles del viaje
-                const { data: hotelesData } = await supabaseAdmin
-                    .from('reservas_hoteles')
-                    .select('*')
-                    .eq('viaje_id', viajeDB.id)
-                    .order('fecha_entrada', { ascending: true });
+        // Obtener todos los vuelos y hoteles en paralelo con 2 queries
+        const [vuelosResult, hotelesResult] = await Promise.all([
+            supabaseAdmin
+                .from('vuelos')
+                .select('*')
+                .in('viaje_id', viajeIds)
+                .order('fecha_salida', { ascending: true }),
+            supabaseAdmin
+                .from('reservas_hoteles')
+                .select('*')
+                .in('viaje_id', viajeIds)
+                .order('fecha_entrada', { ascending: true })
+        ]);
 
-                return {
-                    ...viajeBase,
-                    vuelos: (vuelosData || []).map(mapearVueloDesdeBD),
-                    hoteles: (hotelesData || []).map(mapearHotelDesdeBD),
-                };
-            })
-        );
+        const vuelosData = vuelosResult.data || [];
+        const hotelesData = hotelesResult.data || [];
+
+        // Agrupar vuelos y hoteles por viaje_id
+        const vuelosPorViaje = new Map<string, any[]>();
+        const hotelesPorViaje = new Map<string, any[]>();
+
+        for (const vuelo of vuelosData) {
+            if (!vuelosPorViaje.has(vuelo.viaje_id)) {
+                vuelosPorViaje.set(vuelo.viaje_id, []);
+            }
+            vuelosPorViaje.get(vuelo.viaje_id)!.push(vuelo);
+        }
+
+        for (const hotel of hotelesData) {
+            if (!hotelesPorViaje.has(hotel.viaje_id)) {
+                hotelesPorViaje.set(hotel.viaje_id, []);
+            }
+            hotelesPorViaje.get(hotel.viaje_id)!.push(hotel);
+        }
+
+        // Construir viajes con vuelos y hoteles
+        const viajes: Viaje[] = viajesData.map((viajeDB) => {
+            const viajeBase = mapearViajeDesdeBD(viajeDB);
+            return {
+                ...viajeBase,
+                vuelos: (vuelosPorViaje.get(viajeDB.id) || []).map(mapearVueloDesdeBD),
+                hoteles: (hotelesPorViaje.get(viajeDB.id) || []).map(mapearHotelDesdeBD),
+            };
+        });
 
         res.json({ viajes });
     } catch (error) {
@@ -279,6 +303,44 @@ router.post('/:chatId/crear-desde-chat', async (req, res) => {
     } catch (error) {
         console.error('Error creando viaje desde chat:', error);
         res.status(500).json({ error: 'Error al crear viaje desde chat' });
+    }
+});
+
+/**
+ * POST /api/viajes/:tripId/flight-results
+ * Callback endpoint for receiving flight search results from the agents microservice
+ */
+router.post('/:tripId/flight-results', async (req, res) => {
+    try {
+        const { tripId } = req.params;
+        const { flight_results, secret } = req.body;
+
+        // Validate secret (basic check)
+        if (process.env.WEBHOOK_SECRET && secret !== process.env.WEBHOOK_SECRET) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const { error } = await supabaseAdmin
+            .from('viajes')
+            .update({
+                metadatos: {
+                    flight_status: 'completed',
+                    flight_results,
+                    updated_at: new Date().toISOString()
+                }
+            })
+            .eq('id', tripId);
+
+        if (error) throw error;
+
+        // Also update the chat state if linked
+        // We can do this implicitly or leave it. 
+
+        console.log(`[Flight Results] Updated trip ${tripId} with ${flight_results?.total_offers || 0} offers`);
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Error processing flight results:', error);
+        res.status(500).json({ error: 'Error processing flight results' });
     }
 });
 
