@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../supabase/admin';
 import { aiRouter } from '../../services/ai/ai-router.service';
 import { buildSystemPrompt } from '../../services/ai/system-prompts';
 import type { ChatMessage } from '../../services/ai/types';
+import { generateProvisionalTitle, generateFinalTitle } from '../../services/title-generator.service';
+import type { FlightOptions } from './types';
 
 const router = Router();
 
@@ -59,16 +61,22 @@ router.get('/', async (req, res) => {
 // Create a new chat document (called when a user starts a planner chat)
 router.post('/start', async (req, res) => {
     try {
-        const { userId, categories = [] } = req.body;
+        const { userId, categories = [], flightOptions = null } = req.body;
+
+        // Generate a provisional title based on available data (flightOptions)
+        const provisionalTitle = generateProvisionalTitle({
+            categories,
+            flightOptions: flightOptions as FlightOptions | null,
+        });
 
         const { data, error } = await supabaseAdmin
             .from('chats')
             .insert({
-                usuario_id: userId || null, // Allow null for anonymous/unauth logic if supported, but typically foreign key constraints might fail if user doesn't exist in 'usuarios' table? Schema has REFERENCES. If anonymous users aren't in 'usuarios', this breaks. Assuming userId is valid.
-                titulo: 'Nuevo Chat',
+                usuario_id: userId || null,
+                titulo: provisionalTitle,
                 estado: 'active',
                 categorias: categories,
-                // fecha_creacion & ultimo_mensaje_en default to NOW()
+                metadatos: flightOptions ? { flightOptions } : {},
             })
             .select('id')
             .single();
@@ -91,13 +99,18 @@ router.post('/message', async (req, res) => {
             return res.status(400).json({ error: 'Invalid text' });
         }
 
-        // If no chatId provided, create a new chat
+        // If no chatId provided, create a new chat with provisional title
         if (!chatId) {
+            const provisionalTitle = generateProvisionalTitle({
+                firstMessage: text,
+                categories: [],
+            });
+
             const { data: newChat, error: createError } = await supabaseAdmin
                 .from('chats')
                 .insert({
                     usuario_id: userId || null,
-                    titulo: text.slice(0, 100),
+                    titulo: provisionalTitle,
                     estado: 'active',
                     categorias: [],
                 })
@@ -140,8 +153,11 @@ router.post('/message', async (req, res) => {
             userPreferences = userData?.preferencias_ia;
         }
 
-        // Build personalized system prompt based on chat categories
-        const systemPrompt = buildSystemPrompt(categories, userPreferences);
+        // Extract flight options from chat metadata
+        const flightOptions = chatData?.metadatos?.flightOptions || null;
+
+        // Build personalized system prompt based on chat categories and flight options
+        const systemPrompt = buildSystemPrompt(categories, userPreferences, flightOptions);
 
         // Get previous messages for context
         const { data: previousMessages } = await supabaseAdmin
@@ -291,6 +307,22 @@ router.post('/complete', async (req, res) => {
 
             if (extractRes.ok) {
                 extractedData = await extractRes.json();
+
+                // Generate and update final title based on extracted data
+                const finalTitle = generateFinalTitle({
+                    destinationName: extractedData?.destination_name,
+                    departureDate: extractedData?.departure_date,
+                    returnDate: extractedData?.return_date,
+                    currentTitle: chatData.titulo,
+                });
+
+                // Update chat title with the final title
+                await supabaseAdmin
+                    .from('chats')
+                    .update({ titulo: finalTitle })
+                    .eq('id', chatId);
+
+                console.log(`[Chat Complete] Updated chat title to: ${finalTitle}`);
             } else {
                 console.error('[Chat Complete] Extraction failed', await extractRes.text());
             }

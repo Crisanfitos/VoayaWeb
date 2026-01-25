@@ -2,69 +2,182 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
-
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+export type CalendarProps = {
+  mode?: "single"
+  selected?: Date
+  onSelect?: (date: Date | undefined) => void
+  disabled?: (date: Date) => boolean
+  fromDate?: Date
+  locale?: any
+  className?: string
+  initialFocus?: boolean
+}
+
+const DAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
+const MONTHS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+]
 
 function Calendar({
   className,
-  classNames,
-  showOutsideDays = true,
-  ...props
+  selected,
+  onSelect,
+  disabled,
+  fromDate,
 }: CalendarProps) {
+  const [currentMonth, setCurrentMonth] = React.useState(
+    selected ? new Date(selected.getFullYear(), selected.getMonth(), 1) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  )
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  }
+
+  const getFirstDayOfMonth = (date: Date) => {
+    const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay()
+    // Convert Sunday (0) to 7, and shift Monday to 1
+    return day === 0 ? 6 : day - 1
+  }
+
+  const generateCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentMonth)
+    const firstDay = getFirstDayOfMonth(currentMonth)
+    const days: (number | null)[] = []
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null)
+    }
+
+    // Add all days of the month
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i)
+    }
+
+    return days
+  }
+
+  const handlePreviousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
+  }
+
+  const handleDayClick = (day: number) => {
+    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+
+    if (disabled && disabled(newDate)) {
+      return
+    }
+
+    onSelect?.(newDate)
+  }
+
+  const isSelected = (day: number) => {
+    if (!selected) return false
+    return (
+      selected.getDate() === day &&
+      selected.getMonth() === currentMonth.getMonth() &&
+      selected.getFullYear() === currentMonth.getFullYear()
+    )
+  }
+
+  const isToday = (day: number) => {
+    const today = new Date()
+    return (
+      today.getDate() === day &&
+      today.getMonth() === currentMonth.getMonth() &&
+      today.getFullYear() === currentMonth.getFullYear()
+    )
+  }
+
+  const isDisabled = (day: number) => {
+    if (!disabled) return false
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+    return disabled(date)
+  }
+
+  const calendarDays = generateCalendarDays()
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
-      }}
-      {...props}
-    />
+    <div className={cn("p-3", className)}>
+      {/* Header with month/year and navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={handlePreviousMonth}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "h-7 w-7 bg-transparent p-0 text-muted-foreground hover:text-voaya-primary hover:bg-voaya-primary/10 transition-colors"
+          )}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div className="text-sm font-bold capitalize text-voaya-primary">
+          {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleNextMonth}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            "h-7 w-7 bg-transparent p-0 text-muted-foreground hover:text-voaya-primary hover:bg-voaya-primary/10 transition-colors"
+          )}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 gap-0 mb-2">
+        {DAYS.map((day) => (
+          <div
+            key={day}
+            className="text-muted-foreground text-center text-[0.8rem] font-normal h-9 flex items-center justify-center"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-0">
+        {calendarDays.map((day, index) => (
+          <div key={index} className="h-9 w-full flex items-center justify-center p-0">
+            {day ? (
+              <button
+                type="button"
+                onClick={() => handleDayClick(day)}
+                disabled={isDisabled(day)}
+                className={cn(
+                  buttonVariants({ variant: "ghost" }),
+                  "h-9 w-9 p-0 font-normal rounded-lg transition-all",
+                  isSelected(day) && "bg-voaya-primary text-white hover:bg-voaya-primary hover:text-white",
+                  !isSelected(day) && "hover:bg-voaya-primary hover:text-white",
+                  isToday(day) && !isSelected(day) && "bg-accent text-accent-foreground",
+                  isDisabled(day) && "text-muted-foreground opacity-50 cursor-not-allowed hover:bg-transparent hover:text-muted-foreground"
+                )}
+              >
+                {day}
+              </button>
+            ) : (
+              <div className="h-9 w-9" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
+
 Calendar.displayName = "Calendar"
 
 export { Calendar }

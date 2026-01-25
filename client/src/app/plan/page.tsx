@@ -13,8 +13,20 @@ import { processAndSendData } from '@/app/actions';
 import { getUserIdFromCookie, getChatIdFromCookie, saveChatIdToCookie } from '@/lib/cookies';
 import { ApiService } from '@/services/api';
 import Link from 'next/link';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 
 type SearchCategory = 'flights' | 'hotels' | 'experiences';
+
+// Flight options type for the new toggles
+export interface FlightOptions {
+  luggageType: 'hand_only' | 'hand_and_hold' | null;
+  directFlightsOnly: boolean;
+  budgetClass: 'economy' | 'first_class' | null;
+  departureDate: string | null;
+  returnDate: string | null;
+  oneWayOnly: boolean;
+}
 
 // Trending destinations for visual display
 const trendingDestinations = [
@@ -57,6 +69,16 @@ function PlanPageComponent() {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<Set<SearchCategory>>(new Set(['flights'] as SearchCategory[]));
   const [isSendingToWebhook, setIsSendingToWebhook] = useState(false);
+
+  // New flight options state for toggles
+  const [flightOptions, setFlightOptions] = useState<FlightOptions>({
+    luggageType: null,
+    directFlightsOnly: false,
+    budgetClass: null,
+    departureDate: null,
+    returnDate: null,
+    oneWayOnly: false,
+  });
 
   const [currentView, setCurrentView] = useState<'form' | 'chat' | 'plan'>('form');
   const [travelPlan, setTravelPlan] = useState<TravelPlan | null>(null);
@@ -119,7 +141,19 @@ function PlanPageComponent() {
       }
 
       const categories = Array.from(selectedCategories);
-      const chatResponse = await ApiService.startChat(userId, categories);
+      // Pass flight options only if flights category is selected and some options are set
+      const hasFlightOptions = categories.includes('flights') && (
+        flightOptions.luggageType !== null ||
+        flightOptions.directFlightsOnly ||
+        flightOptions.budgetClass !== null ||
+        flightOptions.departureDate !== null ||
+        flightOptions.oneWayOnly
+      );
+      const chatResponse = await ApiService.startChat(
+        userId,
+        categories,
+        hasFlightOptions ? flightOptions : undefined
+      );
 
       if (!chatResponse || !chatResponse.chatId) {
         alert('Error al crear el chat: respuesta inválida del servidor');
@@ -326,33 +360,134 @@ function PlanPageComponent() {
               {isCreatingChat ? <Loader /> : 'Planificar mi viaje'}
             </Button>
 
-            {/* Suggested Chips */}
-            <div className="flex flex-wrap justify-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setTripDescription('Escapada romántica a París')}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark hover:border-voaya-primary hover:bg-slate-50 dark:hover:bg-input-dark transition-all group"
-              >
-                <span className="material-symbols-outlined text-rose-500 text-[18px]">favorite</span>
-                <span className="text-text-secondary dark:text-text-muted text-sm font-medium">Escapada romántica</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTripDescription('Aventura en la naturaleza')}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark hover:border-voaya-primary hover:bg-slate-50 dark:hover:bg-input-dark transition-all group"
-              >
-                <span className="material-symbols-outlined text-emerald-500 text-[18px]">landscape</span>
-                <span className="text-text-secondary dark:text-text-muted text-sm font-medium">Aventura natural</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTripDescription('Ruta gastronómica por España')}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark hover:border-voaya-primary hover:bg-slate-50 dark:hover:bg-input-dark transition-all group"
-              >
-                <span className="material-symbols-outlined text-amber-500 text-[18px]">restaurant</span>
-                <span className="text-text-secondary dark:text-text-muted text-sm font-medium">Ruta gastronómica</span>
-              </button>
-            </div>
+            {/* Flight Options Toggles - Only shown when flights category is selected */}
+            {selectedCategories.has('flights') && (
+              <div className="flex flex-col gap-4 pt-4 w-full max-w-[600px]">
+                {/* Row 1: Luggage and Direct Flights */}
+                <div className="flex flex-wrap justify-center gap-3">
+                  {/* Luggage Type */}
+                  <div className="flex items-center gap-2 bg-white dark:bg-surface-dark rounded-xl border border-stroke dark:border-input-dark p-2">
+                    <span className="material-symbols-outlined text-voaya-primary text-[18px]">luggage</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setFlightOptions(prev => ({ ...prev, luggageType: prev.luggageType === 'hand_only' ? null : 'hand_only' }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${flightOptions.luggageType === 'hand_only'
+                          ? 'bg-voaya-primary text-white'
+                          : 'bg-slate-100 dark:bg-input-dark text-text-secondary dark:text-text-muted hover:bg-slate-200 dark:hover:bg-slate-700'
+                          }`}
+                      >
+                        Solo mano
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFlightOptions(prev => ({ ...prev, luggageType: prev.luggageType === 'hand_and_hold' ? null : 'hand_and_hold' }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${flightOptions.luggageType === 'hand_and_hold'
+                          ? 'bg-voaya-primary text-white'
+                          : 'bg-slate-100 dark:bg-input-dark text-text-secondary dark:text-text-muted hover:bg-slate-200 dark:hover:bg-slate-700'
+                          }`}
+                      >
+                        + Bodega
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Direct Flights Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setFlightOptions(prev => ({ ...prev, directFlightsOnly: !prev.directFlightsOnly }))}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${flightOptions.directFlightsOnly
+                      ? 'bg-voaya-primary text-white border-voaya-primary'
+                      : 'bg-white dark:bg-surface-dark border-stroke dark:border-input-dark text-text-secondary dark:text-text-muted hover:border-voaya-primary'
+                      }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                    <span className="text-xs font-medium">Solo directos</span>
+                  </button>
+
+                  {/* Budget Class */}
+                  <div className="flex items-center gap-2 bg-white dark:bg-surface-dark rounded-xl border border-stroke dark:border-input-dark p-2">
+                    <span className="material-symbols-outlined text-amber-500 text-[18px]">payments</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setFlightOptions(prev => ({ ...prev, budgetClass: prev.budgetClass === 'economy' ? null : 'economy' }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${flightOptions.budgetClass === 'economy'
+                          ? 'bg-voaya-primary text-white'
+                          : 'bg-slate-100 dark:bg-input-dark text-text-secondary dark:text-text-muted hover:bg-slate-200 dark:hover:bg-slate-700'
+                          }`}
+                      >
+                        Económico
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFlightOptions(prev => ({ ...prev, budgetClass: prev.budgetClass === 'first_class' ? null : 'first_class' }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${flightOptions.budgetClass === 'first_class'
+                          ? 'bg-voaya-primary text-white'
+                          : 'bg-slate-100 dark:bg-input-dark text-text-secondary dark:text-text-muted hover:bg-slate-200 dark:hover:bg-slate-700'
+                          }`}
+                      >
+                        Business
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Dates */}
+                <div className="flex flex-wrap justify-center items-center gap-3">
+                  {/* Departure Date */}
+                  <div className="flex items-center gap-2 bg-white dark:bg-surface-dark rounded-xl border border-stroke dark:border-input-dark p-1 pr-2">
+                    <span className="material-symbols-outlined text-voaya-primary text-[18px] ml-2">flight_takeoff</span>
+                    <DatePicker
+                      date={flightOptions.departureDate ? new Date(flightOptions.departureDate) : undefined}
+                      setDate={(date) => setFlightOptions(prev => ({ ...prev, departureDate: date ? format(date, 'yyyy-MM-dd') : null }))}
+                      placeholder="Fecha ida"
+                      className="border-0 bg-transparent shadow-none hover:bg-transparent h-9 px-2 text-xs font-medium text-text-main dark:text-white w-[150px] justify-start"
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    />
+                  </div>
+
+                  {/* One Way Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setFlightOptions(prev => ({
+                      ...prev,
+                      oneWayOnly: !prev.oneWayOnly,
+                      returnDate: !prev.oneWayOnly ? null : prev.returnDate
+                    }))}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${flightOptions.oneWayOnly
+                      ? 'bg-voaya-primary text-white border-voaya-primary'
+                      : 'bg-white dark:bg-surface-dark border-stroke dark:border-input-dark text-text-secondary dark:text-text-muted hover:border-voaya-primary'
+                      }`}
+                  >
+                    <span className="text-xs font-medium">Solo ida</span>
+                  </button>
+
+                  {/* Return Date - Hidden when oneWayOnly */}
+                  {!flightOptions.oneWayOnly && (
+                    <div className="flex items-center gap-2 bg-white dark:bg-surface-dark rounded-xl border border-stroke dark:border-input-dark p-1 pr-2">
+                      <span className="material-symbols-outlined text-emerald-500 text-[18px] ml-2">flight_land</span>
+                      <DatePicker
+                        date={flightOptions.returnDate ? new Date(flightOptions.returnDate) : undefined}
+                        setDate={(date) => setFlightOptions(prev => ({ ...prev, returnDate: date ? format(date, 'yyyy-MM-dd') : null }))}
+                        placeholder="Fecha vuelta"
+                        className="border-0 bg-transparent shadow-none hover:bg-transparent h-9 px-2 text-xs font-medium text-text-main dark:text-white w-[150px] justify-start"
+                        disabled={(date) => {
+                          const today = new Date(new Date().setHours(0, 0, 0, 0));
+                          const depDate = flightOptions.departureDate ? new Date(flightOptions.departureDate) : today;
+                          return date < depDate;
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Info text */}
+                <p className="text-center text-text-muted text-xs">
+                  Estos filtros son opcionales. También puedes describir todo en el chat.
+                </p>
+              </div>
+            )}
           </form>
         </div>
       </section>

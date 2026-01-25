@@ -34,10 +34,10 @@ export class ApiService {
     // CHAT
     // ==========================================
 
-    static async startChat(userId: string, categories: string[] = []) {
+    static async startChat(userId: string, categories: string[] = [], flightOptions?: any) {
         return this.fetchApi('/chat/start', {
             method: 'POST',
-            body: JSON.stringify({ userId, categories }),
+            body: JSON.stringify({ userId, categories, flightOptions }),
         });
     }
 

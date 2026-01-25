@@ -25,6 +25,7 @@ class TravelPreferences(BaseModel):
     """User travel preferences extracted from chat."""
     travel_class: TravelClass = TravelClass.ECONOMY
     direct_flights_only: bool = False
+    luggage_type: Optional[str] = Field(None, description="hand_only or hand_and_hold")
     max_price: Optional[float] = None
     preferred_airlines: List[str] = Field(default_factory=list)
     flexible_dates: bool = False

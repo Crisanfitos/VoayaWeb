@@ -118,6 +118,7 @@ Debes devolver SOLO un JSON válido con la siguiente estructura:
     "preferences": {
         "travel_class": "ECONOMY", "PREMIUM_ECONOMY", "BUSINESS" o "FIRST",
         "direct_flights_only": true o false,
+        "luggage_type": "hand_only" o "hand_and_hold" o null,
         "max_price": precio máximo o null,
         "flexible_dates": true si mencionan flexibilidad en fechas
     },
@@ -130,6 +131,11 @@ IMPORTANTE:
 - Las fechas deben estar en formato YYYY-MM-DD
 - Si no se especifica número de pasajeros, asume 1 adulto
 - Si no se menciona clase, asume ECONOMY
+- Si mencionan "solo equipaje de mano", "sin facturar", "cabina": luggage_type = "hand_only"
+- Si mencionan "maleta facturada", "bodega", "equipaje grande": luggage_type = "hand_and_hold"
+- Si mencionan "vuelos directos", "sin escalas": direct_flights_only = true
+- Si mencionan "económico", "barato", "turista": travel_class = "ECONOMY"
+- Si mencionan "business", "primera clase", "premium": travel_class = "BUSINESS" o "FIRST"
 - Incluye SOLO el JSON sin explicaciones adicionales ni markdown"""
 
 
@@ -218,6 +224,7 @@ def extract_travel_data(messages: list[ChatMessage], chat_id: str) -> ExtractedT
         preferences = TravelPreferences(
             travel_class=travel_class,
             direct_flights_only=prefs_data.get("direct_flights_only", False),
+            luggage_type=prefs_data.get("luggage_type"),
             max_price=prefs_data.get("max_price"),
             flexible_dates=prefs_data.get("flexible_dates", False)
         )

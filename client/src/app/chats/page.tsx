@@ -7,6 +7,17 @@ import Link from 'next/link';
 import { useUser } from '@/lib/auth';
 import { Loader } from '@/components/ui/loader';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 type ChatItem = {
   id: string;
   titulo?: string;
@@ -50,6 +61,7 @@ export default function ChatsPage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingFavoriteId, setTogglingFavoriteId] = useState<string | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -112,18 +124,21 @@ export default function ChatsPage() {
     }
   };
 
-  const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
     setMenuOpenId(null);
+    setChatToDelete(chatId);
+  };
 
-    if (!confirm('¿Estás seguro de que quieres eliminar este chat? Esta acción no se puede deshacer.')) {
-      return;
-    }
+  const confirmDeleteChat = async () => {
+    const chatId = chatToDelete;
+    if (!chatId) return;
 
     setDeletingId(chatId);
     try {
       await ApiService.eliminarChat(chatId);
       setChats(prev => prev.filter(c => c.id !== chatId));
+      setChatToDelete(null);
     } catch (err) {
       console.error('Error deleting chat:', err);
       alert('Error al eliminar el chat');
@@ -385,7 +400,7 @@ export default function ChatsPage() {
                           {chat.esFavorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
                         </button>
                         <button
-                          onClick={(e) => handleDeleteChat(e, chat.id)}
+                          onClick={(e) => handleDeleteClick(e, chat.id)}
                           className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 text-red-600"
                         >
                           <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -408,6 +423,27 @@ export default function ChatsPage() {
           onClick={() => setMenuOpenId(null)}
         />
       )}
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
+        <AlertDialogContent className="bg-white dark:bg-surface-dark border-stroke dark:border-input-dark">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-text-main dark:text-white">¿Eliminar chat?</AlertDialogTitle>
+            <AlertDialogDescription className="text-text-secondary dark:text-text-muted">
+              Esta acción no se puede deshacer. El historial de mensajes se perderá permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-stroke dark:border-input-dark hover:bg-slate-100 dark:hover:bg-input-dark text-text-main dark:text-white">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteChat}
+              className="bg-red-600 hover:bg-red-700 text-white border-0"
+              disabled={!!deletingId}
+            >
+              {deletingId ? <Loader className="size-4" /> : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

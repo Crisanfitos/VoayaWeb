@@ -123,7 +123,7 @@ export default function ChatPage() {
   if (showOverwritePrompt) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-card-dark rounded-2xl p-6 max-w-md w-full shadow-2xl border border-stroke dark:border-input-dark">
+        <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 max-w-md w-full shadow-2xl border border-stroke dark:border-input-dark">
           <h3 className="text-xl font-bold mb-2 text-text-main dark:text-white">¡Ya existe un viaje!</h3>
           <p className="text-text-secondary dark:text-text-muted mb-6">
             Este chat ya tiene un viaje asociado. ¿Qué quieres hacer?
