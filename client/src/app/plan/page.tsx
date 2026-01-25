@@ -319,9 +319,9 @@ function PlanPageComponent() {
           </div>
 
           {/* Input Module */}
-          <form onSubmit={handleSubmit} className="w-full max-w-[600px] flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="w-full max-w-[700px] flex flex-col gap-4">
             <label className="group relative flex flex-col min-h-[64px] md:min-h-[72px] w-full shadow-2xl shadow-voaya-primary/10 rounded-2xl transition-all duration-300 focus-within:shadow-voaya-primary/30 focus-within:-translate-y-1">
-              <div className="flex w-full flex-1 items-stretch rounded-2xl bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark group-focus-within:border-voaya-primary overflow-hidden">
+              <div className="flex w-full flex-1 items-center rounded-2xl bg-white dark:bg-surface-dark border border-stroke dark:border-input-dark group-focus-within:border-voaya-primary overflow-hidden">
                 <div className="text-voaya-primary flex items-center justify-center pl-5 pr-3">
                   <span className="material-symbols-outlined text-[24px]">auto_awesome</span>
                 </div>
@@ -329,7 +329,7 @@ function PlanPageComponent() {
                   value={tripDescription}
                   onChange={(e) => setTripDescription(e.target.value)}
                   aria-label="Describe your trip"
-                  className="flex w-full min-w-0 flex-1 bg-transparent border-none focus:ring-0 text-text-main dark:text-white placeholder:text-text-muted text-base md:text-lg h-full py-4 outline-none"
+                  className="flex w-full min-w-0 flex-1 bg-transparent border-none focus:ring-0 text-text-main dark:text-white placeholder:text-text-muted text-base md:text-lg outline-none"
                   placeholder={placeholderKey}
                   type="text"
                 />
@@ -362,7 +362,7 @@ function PlanPageComponent() {
 
             {/* Flight Options Toggles - Only shown when flights category is selected */}
             {selectedCategories.has('flights') && (
-              <div className="flex flex-col gap-4 pt-4 w-full max-w-[600px]">
+              <div className="flex flex-col gap-4 pt-4 w-full max-w-[700px]">
                 {/* Row 1: Luggage and Direct Flights */}
                 <div className="flex flex-wrap justify-center gap-3">
                   {/* Luggage Type */}

@@ -87,19 +87,6 @@ export function Navbar() {
         <div className="hidden md:flex gap-3 items-center">
           {isUserLoading ? null : user ? (
             <>
-              <Link href="/plan">
-                <Button className="h-10 px-4 rounded-xl bg-voaya-primary hover:bg-voaya-primary-dark text-white text-sm font-bold shadow-lg shadow-voaya-primary/20 transition-all transform hover:scale-105">
-                  <span className="material-symbols-outlined text-[20px] mr-2">add</span>
-                  Nuevo Viaje
-                </Button>
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="flex h-10 px-4 items-center justify-center rounded-xl bg-transparent border border-stroke dark:border-input-dark text-text-main dark:text-white text-sm font-bold hover:bg-slate-50 dark:hover:bg-input-dark transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px] mr-2">logout</span>
-                Salir
-              </button>
               <Link href="/settings">
                 <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white dark:border-input-dark shadow-sm bg-slate-200 flex items-center justify-center overflow-hidden">
                   {userProfile?.foto_perfil ? (
@@ -109,6 +96,16 @@ export function Navbar() {
                   )}
                 </div>
               </Link>
+              <button
+                onClick={handleSignOut}
+                className="group flex items-center justify-center h-10 w-10 hover:w-24 bg-transparent border border-stroke dark:border-input-dark text-text-main dark:text-white rounded-xl transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap"
+                title="Cerrar sesión"
+              >
+                <span className="material-symbols-outlined text-[20px]">logout</span>
+                <span className="w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 group-hover:ml-2 transition-all duration-300">
+                  Salir
+                </span>
+              </button>
             </>
           ) : (
             <>
@@ -202,6 +199,6 @@ export function Navbar() {
           </Sheet>
         </div>
       </div>
-    </header>
+    </header >
   );
 }

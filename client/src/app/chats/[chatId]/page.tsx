@@ -185,7 +185,7 @@ export default function ChatPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background-light dark:bg-background">
+    <>
       <ChatView
         onChatComplete={handleChatComplete}
         error={null}
@@ -195,7 +195,7 @@ export default function ChatPage() {
         userId={getUserIdFromCookie() || undefined}
         chatId={chatId}
       />
-    </main>
+    </>
   );
 }
 

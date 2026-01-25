@@ -1,6 +1,16 @@
+"use client";
+
 import Link from "next/link";
 
+import { usePathname } from "next/navigation";
+
 export function Footer() {
+  const pathname = usePathname();
+  // Hide footer on specific chat pages (but not on the chat list /chats)
+  const isChatPage = pathname?.startsWith('/chats/') && pathname !== '/chats';
+
+  if (isChatPage) return null;
+
   return (
     <footer className="bg-white dark:bg-background-dark border-t border-stroke dark:border-input-dark py-12 px-4 sm:px-10">
       <div className="max-w-[1280px] mx-auto">

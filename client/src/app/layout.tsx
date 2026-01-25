@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from '@/components/layout/navbar';
+import { MainLayout } from '@/components/layout/main-layout';
 import { Footer } from '@/components/layout/footer';
 import { AuthProvider } from '@/lib/auth';
 import { ThemeProvider } from '@/lib/theme-provider';
@@ -50,7 +51,7 @@ export default function RootLayout({
           <ThemeProvider>
             <Navbar />
             <ErrorBoundary>
-              <main className="min-h-screen">{children}</main>
+              <MainLayout>{children}</MainLayout>
             </ErrorBoundary>
             <Footer />
           </ThemeProvider>
@@ -60,4 +61,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -217,19 +217,22 @@ const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-[calc(100vh-120px)] bg-background-light dark:bg-background">
-      <ChatHeader isLoading={isLoading} />
+    // h-[calc(100vh-64px)] accounts for the main Navbar height (~64px)
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-background-light dark:bg-background overflow-hidden relative">
+      {/* Fixed Chat Header */}
+      <div className="flex-none z-10 bg-background-light dark:bg-background">
+        <ChatHeader isLoading={isLoading} />
+        {/* Error Banner */}
+        {error && (
+          <div className="px-4 md:px-8 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+            <p className="text-red-600 dark:text-red-400 text-sm text-center font-medium">{error}</p>
+          </div>
+        )}
+      </div>
 
-      {/* Error Banner */}
-      {error && (
-        <div className="px-4 md:px-8 py-3 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
-          <p className="text-red-600 dark:text-red-400 text-sm text-center font-medium">{error}</p>
-        </div>
-      )}
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 flex flex-col-reverse">
-        <div className="max-w-4xl mx-auto w-full space-y-6 flex flex-col">
+      {/* Scrollable Messages Area */}
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 flex flex-col">
+        <div className="max-w-4xl mx-auto w-full space-y-6 flex flex-col flex-1">
           {messages.length === 0 && !isLoading && (
             <ChatWelcome onSuggestionClick={handleSuggestionClick} />
           )}
@@ -244,15 +247,18 @@ const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      <ChatInputForm
-        input={input}
-        setInput={setInput}
-        isLoading={isLoading}
-        isChatComplete={isChatComplete}
-        onSubmit={handleSubmit}
-        onRestart={handleRestart}
-        onConfirm={handleConfirm}
-      />
+      {/* Fixed Input Area */}
+      <div className="flex-none z-10 bg-background-light dark:bg-background pt-2">
+        <ChatInputForm
+          input={input}
+          setInput={setInput}
+          isLoading={isLoading}
+          isChatComplete={isChatComplete}
+          onSubmit={handleSubmit}
+          onRestart={handleRestart}
+          onConfirm={handleConfirm}
+        />
+      </div>
     </div>
   );
 };
