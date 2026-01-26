@@ -16,6 +16,7 @@ from graph import run_agent
 from extractor import extract_travel_data
 from amadeus_client import search_flights
 from schemas import ExtractedTravelData, FlightSearchResult
+from cache import flight_cache
 from logger import agent_logger
 
 # Load environment variables
@@ -163,8 +164,11 @@ async def search_flights_endpoint(request: SearchRequest, background_tasks: Back
         
     async def process_search():
         try:
-            # Execute search
-            results = search_flights(request.extracted_data)
+            # Execute search with tripId for caching
+            results = search_flights(
+                travel_data=request.extracted_data,
+                trip_id=request.tripId
+            )
             
             # Send callback to backend
             callback_url = os.getenv("CALLBACK_URL")
@@ -216,6 +220,33 @@ async def search_flights_endpoint(request: SearchRequest, background_tasks: Back
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "version": "1.0.0"}
+
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """Get cache statistics for debugging."""
+    stats = flight_cache.stats()
+    return {
+        "cache_entries": stats["entries"],
+        "cached_trips": stats["keys"],
+        "ttl_seconds": flight_cache.default_ttl
+    }
+
+
+@app.get("/cache/{trip_id}")
+async def get_cached_results(trip_id: str, page: int = 1, page_size: int = 10):
+    """Get cached flight results for a trip with pagination."""
+    cached = flight_cache.get_page(trip_id, page, page_size)
+    if not cached:
+        raise HTTPException(status_code=404, detail="No cached results for this trip")
+    return cached
+
+
+@app.delete("/cache/{trip_id}")
+async def clear_cache_entry(trip_id: str):
+    """Clear cached results for a trip."""
+    deleted = flight_cache.delete(trip_id)
+    return {"deleted": deleted, "trip_id": trip_id}
 
 
 @app.get("/logs/stream")

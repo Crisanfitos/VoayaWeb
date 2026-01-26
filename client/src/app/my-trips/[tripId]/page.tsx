@@ -30,26 +30,105 @@ interface ExtractedData {
     extraction_confidence?: number;
 }
 
+interface FlightSegment {
+    departure_airport: string;
+    arrival_airport: string;
+    departure_time: string;
+    arrival_time: string;
+    carrier_code: string;
+    flight_number: string;
+    duration: string;
+
+    // Optional: Terminal info
+    departure_terminal?: string;
+    arrival_terminal?: string;
+
+    // Optional: Airline info
+    carrier_name?: string;
+    operating_carrier_code?: string;
+    operating_carrier_name?: string;
+
+    // Optional: Aircraft info
+    aircraft_code?: string;
+    aircraft_name?: string;
+
+    // Optional: Stops within segment
+    number_of_stops?: number;
+    segment_id?: string;
+    blacklisted_in_eu?: boolean;
+}
+
+interface BaggageInfo {
+    checked_bags_quantity?: number;
+    checked_bags_weight?: number;
+    checked_bags_weight_unit?: string;
+    cabin_bags_quantity?: number;
+}
+
+interface FareDetails {
+    segment_id?: string;
+    cabin_class?: string;
+    fare_basis?: string;
+    branded_fare?: string;
+    branded_fare_label?: string;
+    booking_class?: string;
+    baggage?: BaggageInfo;
+    amenities?: string[];
+}
+
 interface FlightOffer {
     id: string;
-    price: { total: string; currency: string };
-    itineraries: {
-        duration: string;
-        segments: {
-            departure: { at: string; iataCode: string };
-            arrival: { at: string; iataCode: string };
-            carrierCode: string;
-            number: string;
-            aircraft: { code: string };
-        }[];
-    }[];
-    travelerPricings: any[];
+
+    // Pricing
+    price: string;
+    currency: string;
+    base_price?: string;
+    grand_total?: string;
+
+    // Flight structure
+    total_duration: string;
+    stops: number;
+    outbound_segments: FlightSegment[];
+    return_segments?: FlightSegment[];
+
+    // Airline info
+    validating_airline?: string;
+    validating_airline_name?: string;
+
+    // Booking
+    booking_url?: string;
+    last_ticketing_date?: string;
+    last_ticketing_datetime?: string;
+
+    // Availability
+    number_of_bookable_seats?: number;
+    instant_ticketing_required?: boolean;
+
+    // Fare details
+    fare_details?: FareDetails[];
+
+    // Metadata
+    source?: string;
+    is_upsell_offer?: boolean;
 }
 
 interface FlightResults {
+    success: boolean;
     total_offers: number;
     offers: FlightOffer[];
     search_timestamp: string;
+    direct_flights_available?: boolean;
+    direct_flights_count?: number;
+    used_alternative_departure?: string;
+    used_alternative_return?: string;
+    user_messages?: string[];
+
+    // Pagination
+    page?: number;
+    page_size?: number;
+    total_pages?: number;
+    has_more?: boolean;
+    cache_id?: string;
 }
 
 interface ViajeDetail {
@@ -216,69 +295,161 @@ const processedDates = (extracted?: ExtractedData) => {
 
 
 const FlightCard = ({ offer }: { offer: FlightOffer }) => {
-    const outbound = offer.itineraries[0];
-    const returnFlight = offer.itineraries[1]; // might be undefined if one-way
+    const outbound = offer.outbound_segments;
+    const returnFlight = offer.return_segments;
+    const fareDetails = offer.fare_details?.[0];
+
+    if (!outbound || outbound.length === 0) {
+        return null;
+    }
+
+    const firstOutbound = outbound[0];
+    const lastOutbound = outbound[outbound.length - 1];
+
+    // Get intermediate stops for display
+    const getStopoverAirports = (segments: FlightSegment[]) => {
+        if (segments.length <= 1) return null;
+        return segments.slice(0, -1).map(s => s.arrival_airport).join(' → ');
+    };
+
+    const handleBookingClick = () => {
+        if (offer.booking_url) {
+            window.open(offer.booking_url, '_blank', 'noopener,noreferrer');
+        }
+    };
 
     return (
-        <div className="group bg-white dark:bg-card-dark border border-stroke dark:border-input-dark rounded-2xl p-5 hover:border-voaya-primary/50 hover:shadow-lg transition-all cursor-pointer">
-            <div className="flex flex-col md:flex-row gap-6 justify-between">
+        <div className="group bg-surface-default dark:bg-card-dark border border-stroke dark:border-input-dark rounded-2xl p-5 hover:border-voaya-primary/50 hover:shadow-lg transition-all">
+            {/* Header with airline and fare type */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-stroke/50 dark:border-input-dark/50">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-voaya-primary/10 dark:bg-voaya-primary/20 flex items-center justify-center">
+                        <span className="font-bold text-sm text-voaya-primary">{offer.validating_airline || firstOutbound.carrier_code}</span>
+                    </div>
+                    <div>
+                        <p className="font-semibold text-text-main dark:text-white text-sm">
+                            {offer.validating_airline_name || firstOutbound.carrier_name || offer.validating_airline}
+                        </p>
+                        <p className="text-xs text-text-muted">
+                            {firstOutbound.flight_number}
+                            {fareDetails?.branded_fare_label && (
+                                <span className="ml-2 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded text-[10px] font-medium">
+                                    {fareDetails.branded_fare_label}
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                </div>
+                {/* Baggage icons */}
+                <div className="flex items-center gap-2 text-text-muted">
+                    {fareDetails?.baggage?.cabin_bags_quantity !== undefined && fareDetails.baggage.cabin_bags_quantity > 0 && (
+                        <div className="flex items-center gap-1 text-xs" title="Equipaje de mano incluido">
+                            <span className="material-symbols-outlined text-[16px]">backpack</span>
+                            <span>{fareDetails.baggage.cabin_bags_quantity}</span>
+                        </div>
+                    )}
+                    {fareDetails?.baggage?.checked_bags_quantity !== undefined && (
+                        <div className={`flex items-center gap-1 text-xs ${fareDetails.baggage.checked_bags_quantity > 0 ? 'text-emerald-500' : 'text-text-muted line-through'}`}
+                            title={fareDetails.baggage.checked_bags_quantity > 0 ? 'Equipaje facturado incluido' : 'Sin equipaje facturado'}>
+                            <span className="material-symbols-outlined text-[16px]">luggage</span>
+                            <span>{fareDetails.baggage.checked_bags_quantity}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
 
+            <div className="flex flex-col md:flex-row gap-6 justify-between">
                 {/* Flight Info */}
                 <div className="flex-1 space-y-4">
                     {/* Outbound */}
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
-                            <span className="font-bold text-xs text-blue-600 dark:text-blue-400">{outbound.segments[0].carrierCode}</span>
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-lg text-text-main dark:text-white">
-                                    {format(new Date(outbound.segments[0].departure.at), 'HH:mm')}
+                    <div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-center min-w-[60px]">
+                                <span className="font-bold text-lg text-text-main dark:text-white block">
+                                    {format(new Date(firstOutbound.departure_time), 'HH:mm')}
                                 </span>
-                                <div className="flex-1 px-3 flex flex-col items-center">
-                                    <span className="text-xs text-text-muted">{formatDuration(outbound.duration)}</span>
-                                    <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative mt-1">
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-stroke dark:border-input-dark bg-white dark:bg-card-dark" />
-                                    </div>
-                                    <span className="text-[10px] text-emerald-500 font-medium mt-1">
-                                        {outbound.segments.length > 1 ? `${outbound.segments.length - 1} escalas` : 'Directo'}
-                                    </span>
+                                <span className="text-xs text-text-muted">{firstOutbound.departure_airport}</span>
+                                {firstOutbound.departure_terminal && (
+                                    <span className="text-[10px] text-text-muted block">T{firstOutbound.departure_terminal}</span>
+                                )}
+                            </div>
+
+                            <div className="flex-1 flex flex-col items-center">
+                                <span className="text-xs text-text-muted">{formatDuration(offer.total_duration)}</span>
+                                <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative my-1">
+                                    {offer.stops > 0 && outbound.slice(0, -1).map((seg, i) => (
+                                        <div key={i}
+                                            className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
+                                            style={{ left: `${((i + 1) / offer.stops) * 80 + 10}%` }}
+                                            title={seg.arrival_airport}
+                                        />
+                                    ))}
                                 </div>
-                                <span className="font-bold text-lg text-text-main dark:text-white">
-                                    {format(new Date(outbound.segments[outbound.segments.length - 1].arrival.at), 'HH:mm')}
+                                <span className={`text-[10px] font-medium ${offer.stops === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                    {offer.stops > 0 ? `${offer.stops} escala${offer.stops > 1 ? 's' : ''} (${getStopoverAirports(outbound)})` : 'Directo'}
                                 </span>
                             </div>
-                            <div className="flex justify-between text-xs text-text-muted">
-                                <span>{outbound.segments[0].departure.iataCode}</span>
-                                <span>{outbound.segments[outbound.segments.length - 1].arrival.iataCode}</span>
+
+                            <div className="text-center min-w-[60px]">
+                                <span className="font-bold text-lg text-text-main dark:text-white block">
+                                    {format(new Date(lastOutbound.arrival_time), 'HH:mm')}
+                                </span>
+                                <span className="text-xs text-text-muted">{lastOutbound.arrival_airport}</span>
+                                {lastOutbound.arrival_terminal && (
+                                    <span className="text-[10px] text-text-muted block">T{lastOutbound.arrival_terminal}</span>
+                                )}
                             </div>
                         </div>
+
+                        {/* Aircraft info */}
+                        {firstOutbound.aircraft_name && (
+                            <p className="text-[10px] text-text-muted mt-1 text-center">
+                                ✈️ {firstOutbound.aircraft_name}
+                                {firstOutbound.operating_carrier_name && firstOutbound.operating_carrier_code !== firstOutbound.carrier_code && (
+                                    <span> · Operado por {firstOutbound.operating_carrier_name}</span>
+                                )}
+                            </p>
+                        )}
                     </div>
 
                     {/* Return (if exists) */}
-                    {returnFlight && (
-                        <div className="flex items-center gap-4 border-t border-dashed border-stroke dark:border-input-dark pt-4">
-                            <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0">
-                                <span className="font-bold text-xs text-purple-600 dark:text-purple-400">{returnFlight.segments[0].carrierCode}</span>
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                    <span className="font-bold text-lg text-text-main dark:text-white">
-                                        {format(new Date(returnFlight.segments[0].departure.at), 'HH:mm')}
+                    {returnFlight && returnFlight.length > 0 && (
+                        <div className="border-t border-dashed border-stroke dark:border-input-dark pt-4">
+                            <div className="flex items-center gap-4">
+                                <div className="text-center min-w-[60px]">
+                                    <span className="font-bold text-lg text-text-main dark:text-white block">
+                                        {format(new Date(returnFlight[0].departure_time), 'HH:mm')}
                                     </span>
-                                    <div className="flex-1 px-3 flex flex-col items-center">
-                                        <span className="text-xs text-text-muted">{formatDuration(returnFlight.duration)}</span>
-                                        <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative mt-1">
-                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-stroke dark:border-input-dark bg-white dark:bg-card-dark" />
-                                        </div>
+                                    <span className="text-xs text-text-muted">{returnFlight[0].departure_airport}</span>
+                                    {returnFlight[0].departure_terminal && (
+                                        <span className="text-[10px] text-text-muted block">T{returnFlight[0].departure_terminal}</span>
+                                    )}
+                                </div>
+
+                                <div className="flex-1 flex flex-col items-center">
+                                    <span className="text-xs text-text-muted">{formatDuration(returnFlight[0].duration)}</span>
+                                    <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative my-1">
+                                        {returnFlight.length > 1 && returnFlight.slice(0, -1).map((seg, i) => (
+                                            <div key={i}
+                                                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
+                                                style={{ left: `${((i + 1) / (returnFlight.length - 1)) * 80 + 10}%` }}
+                                                title={seg.arrival_airport}
+                                            />
+                                        ))}
                                     </div>
-                                    <span className="font-bold text-lg text-text-main dark:text-white">
-                                        {format(new Date(returnFlight.segments[returnFlight.segments.length - 1].arrival.at), 'HH:mm')}
+                                    <span className={`text-[10px] font-medium ${returnFlight.length === 1 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                        {returnFlight.length > 1 ? `${returnFlight.length - 1} escala${returnFlight.length > 2 ? 's' : ''} (${getStopoverAirports(returnFlight)})` : 'Directo'}
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-xs text-text-muted">
-                                    <span>{returnFlight.segments[0].departure.iataCode}</span>
-                                    <span>{returnFlight.segments[returnFlight.segments.length - 1].arrival.iataCode}</span>
+
+                                <div className="text-center min-w-[60px]">
+                                    <span className="font-bold text-lg text-text-main dark:text-white block">
+                                        {format(new Date(returnFlight[returnFlight.length - 1].arrival_time), 'HH:mm')}
+                                    </span>
+                                    <span className="text-xs text-text-muted">{returnFlight[returnFlight.length - 1].arrival_airport}</span>
+                                    {returnFlight[returnFlight.length - 1].arrival_terminal && (
+                                        <span className="text-[10px] text-text-muted block">T{returnFlight[returnFlight.length - 1].arrival_terminal}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -286,17 +457,33 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                 </div>
 
                 {/* Price & Action */}
-                <div className="md:border-l border-stroke dark:border-input-dark md:pl-6 flex flex-col justify-center items-end min-w-[140px]">
+                <div className="md:border-l border-stroke dark:border-input-dark md:pl-6 flex flex-col justify-center items-end min-w-[150px]">
+                    {offer.number_of_bookable_seats && offer.number_of_bookable_seats < 5 && (
+                        <span className="text-[10px] text-amber-500 font-medium mb-1">
+                            ¡Solo {offer.number_of_bookable_seats} plazas!
+                        </span>
+                    )}
                     <span className="text-xs text-text-muted mb-1">Total por persona</span>
                     <span className="text-2xl font-black text-text-main dark:text-white font-display">
-                        {offer.price.currency} {offer.price.total}
+                        {offer.currency} {offer.price}
                     </span>
-                    <button className="mt-4 w-full py-2.5 px-4 bg-voaya-primary text-white text-sm font-bold rounded-xl hover:bg-voaya-primary-dark transition-colors shadow-sm hover:shadow-md active:scale-95 transform duration-100 flex items-center justify-center gap-2">
+                    {offer.base_price && offer.base_price !== offer.price && (
+                        <span className="text-[10px] text-text-muted">Base: {offer.currency} {offer.base_price}</span>
+                    )}
+                    <button
+                        onClick={handleBookingClick}
+                        disabled={!offer.booking_url}
+                        className="mt-4 w-full py-2.5 px-4 bg-voaya-primary text-white text-sm font-bold rounded-xl hover:bg-voaya-primary-dark transition-colors shadow-sm hover:shadow-md active:scale-95 transform duration-100 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         Ver oferta
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                     </button>
+                    {offer.last_ticketing_date && (
+                        <span className="text-[10px] text-text-muted mt-2">
+                            Reservar antes: {format(new Date(offer.last_ticketing_date), 'dd MMM', { locale: es })}
+                        </span>
+                    )}
                 </div>
-
             </div>
         </div>
     );
@@ -478,6 +665,32 @@ export default function TripDetailPage() {
                                 {hasFlights && flights.offers.map((offer) => (
                                     <FlightCard key={offer.id} offer={offer} />
                                 ))}
+
+                                {/* Load More Button */}
+                                {hasFlights && flights.has_more && (
+                                    <div className="pt-4 text-center">
+                                        <button
+                                            className="px-6 py-3 bg-voaya-primary/10 text-voaya-primary font-bold rounded-xl hover:bg-voaya-primary hover:text-white transition-all flex items-center gap-2 mx-auto"
+                                            onClick={() => {
+                                                // TODO: Implement load more from cache
+                                                // Call /cache/{tripId}?page=2
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined">expand_more</span>
+                                            Cargar más vuelos
+                                            <span className="text-xs opacity-70">
+                                                ({flights.offers.length} de {flights.total_offers})
+                                            </span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Pagination info */}
+                                {hasFlights && !flights.has_more && flights.total_offers > flights.offers.length && (
+                                    <p className="text-center text-text-muted text-sm pt-4">
+                                        Mostrando {flights.offers.length} de {flights.total_offers} vuelos
+                                    </p>
+                                )}
                             </div>
                         </div>
 

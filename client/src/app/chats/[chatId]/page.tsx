@@ -53,51 +53,18 @@ export default function ChatPage() {
     try {
       if (!chatId) return;
 
-      // Check if trip exists for this chat
-      // We assume completeChat handles it if we force it? 
-      // User requested: "check if exists another trip created... warn user... go to review or delete and create new"
+      // STEP 1: Check if trip already exists (no side effects)
+      const checkResult = await ApiService.checkTripExists(chatId);
 
-      // We can use a new API endpoint or logic. For simplicity, let's just try to call a check endpoint.
-      // Or we can rely on `completeChat` returning a specific code if exists. 
-      // But user wants CLIENT side prompt.
+      if (checkResult.exists && checkResult.trip) {
+        // Show overwrite prompt - do NOT call /complete yet
+        setExistingTripId(checkResult.trip.id);
+        setShowOverwritePrompt(true);
+        return;
+      }
 
-      // Let's first check if there is an existing trip for this chat.
-      // We can search trips by chatId.
-      // Currently ApiService doesn't have `getTripByChatId` but filtering by generic `obtenerViajes` might work if it supports query.
-      // Easier: Let's assume completeChat will return existing trip if we don't force. 
-      // But the requirement is specific on UI prompt.
-
-      // Let's implement check logic here if possible, or try completeChat and handle "AlreadyExists" error?
-      // Since I can't easily change API signature without breaking things, I'll modify `completeChat` in backend to support a `checkOnly` flag or similar?
-      // No, let's add `checkTripExists` to ApiService.
-
-      // Actually backend `crearViajeDesdeChat` or `complete` logic: 
-      // if I call `complete`, it creates a trip. If I do it again, it might duplicate or fail.
-
-      // For now, I will implement a direct call to existing endpoint to check.
-      // `ApiService.obtenerViajes` uses user ID. I can fetch all and find one with this chatId? Valid but slow.
-
-      // Best approach: Add `/api/viajes/check-chat/:chatId` endpoint.
-      // Since I am already in `chat.controller.ts`, I can add it, or `viaje.controller.ts`.
-
-      // Wait, I can't add endpoints easily without viewing file again.
-      // Let's try to complete, and if backend returns "trip already exists" (I need to implement this check in backend), then prompt.
-
-      // But user asked: "check if exists... warn... go to review or delete and create new".
-      // This implies 2 paths.
-
-      // Use query param for force?
-      // I'll update client to just call complete. If it returns `tripId`, I redirect.
-      // To implement the "Ask user" feature properly, I need backend to tell me if it *would* overwrite.
-
-      // Given constraints, I will fetch the trip associated with this chat if any.
-      // I'll assume I can use `ApiService.obtenerViajes` filtering? No.
-
-      // I'll implement a simplified version: Just call complete. 
-      // IF the backend detects existing trip, it should return it.
-      // I'll modify backend to handle `force` flag.
-
-      await proceedWithCompletion();
+      // STEP 2: No existing trip, proceed with creation
+      await proceedWithCompletion(false);
 
     } catch (err) {
       console.error('Failed to complete chat', err);
@@ -105,18 +72,15 @@ export default function ChatPage() {
   };
 
   const proceedWithCompletion = async (forceRewrite = false) => {
-    // Pass force flag if I add it to API
-    const res: any = await ApiService.completeChat(chatId || '', forceRewrite);
+    try {
+      const res: any = await ApiService.completeChat(chatId || '', forceRewrite);
 
-    if (res.existingTrip && !forceRewrite) {
-      setExistingTripId(res.existingTrip.id);
-      setShowOverwritePrompt(true);
-      return;
-    }
-
-    setChatStatus('completed');
-    if (res.tripId) {
-      router.push(`/my-trips/${res.tripId}`);
+      setChatStatus('completed');
+      if (res.tripId) {
+        router.push(`/my-trips/${res.tripId}`);
+      }
+    } catch (err) {
+      console.error('Failed to proceed with completion', err);
     }
   };
 

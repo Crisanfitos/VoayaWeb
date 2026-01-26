@@ -459,6 +459,32 @@ router.post('/send-external', async (req, res) => {
     }
 });
 
+// Check if a trip already exists for a chat (no side effects)
+router.get('/check-trip/:chatId', async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        if (!chatId) return res.status(400).json({ error: 'chatId required' });
+
+        const { data: existingTrip } = await supabaseAdmin
+            .from('viajes')
+            .select('id, destino, fecha_inicio, fecha_fin, estado')
+            .eq('chat_id', chatId)
+            .single();
+
+        if (existingTrip) {
+            return res.json({
+                exists: true,
+                trip: existingTrip
+            });
+        }
+
+        return res.json({ exists: false });
+    } catch (error) {
+        console.error('Error checking trip:', error);
+        res.status(500).json({ error: 'Failed to check trip' });
+    }
+});
+
 // Get chat and its messages
 router.get('/:chatId', async (req, res) => {
     try {

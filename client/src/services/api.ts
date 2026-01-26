@@ -76,6 +76,12 @@ export class ApiService {
         });
     }
 
+    static async checkTripExists(chatId: string): Promise<{ exists: boolean; trip?: { id: string; destino: string } }> {
+        return this.fetchApi(`/chat/check-trip/${encodeURIComponent(chatId)}`, {
+            method: 'GET',
+        });
+    }
+
     static async getChats(userId?: string) {
         const qs = userId ? `?userId=${encodeURIComponent(userId)}` : '';
         return this.fetchApi(`/chat${qs}`, {

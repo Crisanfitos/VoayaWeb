@@ -47,40 +47,116 @@ class ExtractedTravelData(BaseModel):
 
 
 class FlightSegment(BaseModel):
-    """A single flight segment."""
+    """A single flight segment with all available data from Amadeus."""
+    # Required fields
     departure_airport: str
     arrival_airport: str
     departure_time: str
     arrival_time: str
     carrier_code: str
-    carrier_name: Optional[str] = None
     flight_number: str
     duration: str
-    aircraft: Optional[str] = None
+    
+    # Optional: Terminal info
+    departure_terminal: Optional[str] = None
+    arrival_terminal: Optional[str] = None
+    
+    # Optional: Airline info
+    carrier_name: Optional[str] = None
+    operating_carrier_code: Optional[str] = None  # If different from marketing carrier
+    operating_carrier_name: Optional[str] = None
+    
+    # Optional: Aircraft info
+    aircraft_code: Optional[str] = None
+    aircraft_name: Optional[str] = None  # e.g., "Boeing 787-8"
+    
+    # Optional: Stops within segment
+    number_of_stops: int = 0
+    
+    # Optional: Segment metadata
+    segment_id: Optional[str] = None
+    blacklisted_in_eu: bool = False
+
+
+class BaggageInfo(BaseModel):
+    """Baggage allowance info."""
+    checked_bags_quantity: Optional[int] = None
+    checked_bags_weight: Optional[int] = None
+    checked_bags_weight_unit: Optional[str] = None  # KG or LB
+    cabin_bags_quantity: Optional[int] = None
+
+
+class FareDetails(BaseModel):
+    """Fare and pricing details per segment."""
+    segment_id: Optional[str] = None
+    cabin_class: Optional[str] = None  # ECONOMY, BUSINESS, etc.
+    fare_basis: Optional[str] = None
+    branded_fare: Optional[str] = None  # e.g., "LITE", "CLASSIC", "FLEX"
+    branded_fare_label: Optional[str] = None
+    booking_class: Optional[str] = None  # e.g., "N", "Y", "J"
+    baggage: Optional[BaggageInfo] = None
+    amenities: List[str] = Field(default_factory=list)  # e.g., ["WIFI", "PRIORITY_BOARDING"]
 
 
 class FlightOffer(BaseModel):
-    """A complete flight offer from Amadeus."""
+    """A complete flight offer from Amadeus with full pricing and fare details."""
     id: str
-    price: str
+    
+    # Pricing
+    price: str  # Total price
     currency: str
+    base_price: Optional[str] = None  # Price before taxes
+    grand_total: Optional[str] = None  # Final price
+    
+    # Flight structure
     total_duration: str
     stops: int
     outbound_segments: List[FlightSegment]
     return_segments: Optional[List[FlightSegment]] = None
-    booking_url: Optional[str] = None
+    
+    # Airline info
     validating_airline: Optional[str] = None
+    validating_airline_name: Optional[str] = None
+    
+    # Booking
+    booking_url: Optional[str] = None
     last_ticketing_date: Optional[str] = None
+    last_ticketing_datetime: Optional[str] = None
+    
+    # Availability
+    number_of_bookable_seats: Optional[int] = None
+    instant_ticketing_required: bool = False
+    
+    # Fare details (per traveler type)
+    fare_details: Optional[List[FareDetails]] = None
+    
+    # Offer metadata
+    source: Optional[str] = None  # e.g., "GDS"
+    is_upsell_offer: bool = False
 
 
 class FlightSearchResult(BaseModel):
-    """Results from flight search."""
+    """Results from flight search with pagination support."""
     success: bool
     offers: List[FlightOffer] = Field(default_factory=list)
     total_offers: int = 0
     search_params: Optional[ExtractedTravelData] = None
     error_message: Optional[str] = None
     search_timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    # Smart search metadata
+    direct_flights_available: Optional[bool] = None
+    direct_flights_count: int = 0
+    used_alternative_departure: Optional[str] = None
+    used_alternative_return: Optional[str] = None
+    user_messages: List[str] = Field(default_factory=list)
+    
+    # Pagination support
+    page: int = 1
+    page_size: int = 10
+    total_pages: int = 1
+    has_more: bool = False
+    cache_id: Optional[str] = None  # For retrieving cached results
 
 
 class ChatMessage(BaseModel):
