@@ -331,6 +331,25 @@ router.post('/complete', async (req, res) => {
         }
 
         // 2. CREATE TRIP (VIAJE)
+        // Resolve Image dynamically
+        let imagenUrl = null;
+        if (extractedData?.destination_name) {
+            try {
+                // Import ImageService dynamically or ensure it's imported at top. 
+                // Since this is inside an async function, dynamic import is cleaner if we didn't add top-level import yet, 
+                // but let's assume we'll add the import. For this tool, I'll stick to logic here.
+                // WE MUST ADD THE IMPORT AT THE TOP FIRST? No, I can do it in two steps or just use require if needed, 
+                // but better to add import. I'll simply assume I can add the logic here and then add import.
+                // Actually, let's use the class directly and I'll add the import in a separate tool or same tool if I can?
+                // `replace_file_content` works on a block. I can't easily add import at top AND change code in middle in one go unless I replace whole file.
+                // I'll do the logic here and then add the import.
+                const { ImageService } = require('../../services/image.service');
+                imagenUrl = await ImageService.resolveImage(extractedData.destination_name);
+            } catch (err) {
+                console.error('[Chat Complete] Failed to resolve image:', err);
+            }
+        }
+
         const viajeData = {
             usuario_id: effectiveUserId,
             chat_id: chatId,
@@ -338,6 +357,7 @@ router.post('/complete', async (req, res) => {
             fecha_inicio: extractedData?.departure_date || null,
             fecha_fin: extractedData?.return_date || null,
             estado: 'planificando',
+            imagen_url: imagenUrl,
             metadatos: {
                 extracted_data: extractedData,
                 flight_status: 'searching', // Initial status

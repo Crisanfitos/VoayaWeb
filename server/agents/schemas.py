@@ -199,3 +199,18 @@ class AgentResponse(BaseModel):
     agent_version: str = "1.0.0"
     processing_time_ms: int = 0
     logs: List[str] = Field(default_factory=list)
+
+
+class FlightFilters(BaseModel):
+    """Filters for flight search results."""
+    max_price: Optional[float] = None
+    max_duration_minutes: Optional[int] = None
+    direct_only: bool = False
+    airlines: Optional[List[str]] = None
+    has_checked_baggage: Optional[bool] = None
+    departure_time_min: Optional[str] = None
+    departure_time_max: Optional[str] = None
+    arrival_time_min: Optional[str] = None
+    arrival_time_max: Optional[str] = None
+    sort_by: str = "price"
+    sort_order: str = "asc"

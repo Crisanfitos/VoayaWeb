@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sse_starlette.sse import EventSourceResponse
-from schemas import AnalyzeRequest, SearchRequest, AgentResponse, ChatMessage
+from schemas import AnalyzeRequest, SearchRequest, AgentResponse, ChatMessage, FlightFilters
 from graph import run_agent
 from extractor import extract_travel_data
 from amadeus_client import search_flights
@@ -237,9 +237,162 @@ async def cache_stats():
 async def get_cached_results(trip_id: str, page: int = 1, page_size: int = 10):
     """Get cached flight results for a trip with pagination."""
     cached = flight_cache.get_page(trip_id, page, page_size)
+    
     if not cached:
+         # If truly missing (not even expired)
         raise HTTPException(status_code=404, detail="No cached results for this trip")
+    
+    # Check for expired status
+    if cached.get("status") == "expired":
+        return {"status": "expired", "message": "Search results expired"}
+        
     return cached
+
+
+@app.post("/cache/{trip_id}/filter")
+async def filter_cached_results(trip_id: str, filters: FlightFilters, page: int = 1, page_size: int = 10):
+    """
+    Filter and sort cached flight results server-side.
+    This avoids API calls and provides fast filtering.
+    """
+    from datetime import datetime
+    
+    # Check expiration via get() first
+    raw_data = flight_cache.get(trip_id)
+    
+    if not raw_data:
+        raise HTTPException(status_code=404, detail="No cached results for this trip")
+        
+    if isinstance(raw_data, dict) and raw_data.get("status") == "expired":
+        return {"status": "expired", "message": "Search results expired", "offers": []}
+    
+    # Assume standard list of offers if active
+    all_offers = raw_data
+    
+    filtered = all_offers.copy()
+    
+    # Parse duration string (PT1H25M) to minutes
+    def parse_duration(dur: str) -> int:
+        if not dur:
+            return 9999
+        import re
+        match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?', dur)
+        if match:
+            hours = int(match.group(1) or 0)
+            minutes = int(match.group(2) or 0)
+            return hours * 60 + minutes
+        return 9999
+    
+    # Parse time string (HH:MM) to minutes from midnight
+    def time_to_minutes(time_str: str) -> int:
+        if not time_str:
+            return 0
+        try:
+            parts = time_str.split(":")
+            return int(parts[0]) * 60 + int(parts[1])
+        except:
+            return 0
+    
+    # Get departure time from ISO datetime
+    def get_departure_minutes(offer: dict) -> int:
+        try:
+            segments = offer.get("outbound_segments", [])
+            if segments:
+                dt = datetime.fromisoformat(segments[0].get("departure_time", "").replace("Z", "+00:00"))
+                return dt.hour * 60 + dt.minute
+        except:
+            pass
+        return 0
+    
+    # Get arrival time from ISO datetime
+    def get_arrival_minutes(offer: dict) -> int:
+        try:
+            segments = offer.get("outbound_segments", [])
+            if segments:
+                dt = datetime.fromisoformat(segments[-1].get("arrival_time", "").replace("Z", "+00:00"))
+                return dt.hour * 60 + dt.minute
+        except:
+            pass
+        return 0
+    
+    # Apply filters
+    if filters.max_price is not None:
+        filtered = [o for o in filtered if float(o.get("price", 9999)) <= filters.max_price]
+    
+    if filters.max_duration_minutes is not None:
+        filtered = [o for o in filtered if parse_duration(o.get("total_duration", "")) <= filters.max_duration_minutes]
+    
+    if filters.direct_only:
+        filtered = [o for o in filtered if o.get("stops", 99) == 0]
+    
+    if filters.airlines:
+        airline_set = set(a.upper() for a in filters.airlines)
+        filtered = [o for o in filtered if o.get("validating_airline", "").upper() in airline_set]
+    
+    if filters.has_checked_baggage is not None:
+        def has_baggage(offer):
+            fare = offer.get("fare_details", [{}])
+            if fare and len(fare) > 0:
+                bag = fare[0].get("baggage", {})
+                if bag:
+                    qty = bag.get("checked_bags_quantity", 0)
+                    return qty > 0 if filters.has_checked_baggage else qty == 0
+            return not filters.has_checked_baggage
+        filtered = [o for o in filtered if has_baggage(o)]
+    
+    if filters.departure_time_min:
+        min_minutes = time_to_minutes(filters.departure_time_min)
+        filtered = [o for o in filtered if get_departure_minutes(o) >= min_minutes]
+    
+    if filters.departure_time_max:
+        max_minutes = time_to_minutes(filters.departure_time_max)
+        filtered = [o for o in filtered if get_departure_minutes(o) <= max_minutes]
+    
+    if filters.arrival_time_min:
+        min_minutes = time_to_minutes(filters.arrival_time_min)
+        filtered = [o for o in filtered if get_arrival_minutes(o) >= min_minutes]
+    
+    if filters.arrival_time_max:
+        max_minutes = time_to_minutes(filters.arrival_time_max)
+        filtered = [o for o in filtered if get_arrival_minutes(o) <= max_minutes]
+    
+    # Sort
+    reverse = filters.sort_order == "desc"
+    if filters.sort_by == "price":
+        filtered.sort(key=lambda o: float(o.get("price", 9999)), reverse=reverse)
+    elif filters.sort_by == "duration":
+        filtered.sort(key=lambda o: parse_duration(o.get("total_duration", "")), reverse=reverse)
+    elif filters.sort_by == "departure":
+        filtered.sort(key=get_departure_minutes, reverse=reverse)
+    
+    # Paginate
+    total = len(filtered)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    # Get unique airlines for filter options
+    all_airlines = set()
+    for o in all_offers:
+        if o.get("validating_airline"):
+            all_airlines.add(o["validating_airline"])
+    
+    return {
+        "status": "active",
+        "offers": filtered[start:end],
+        "page": page,
+        "page_size": page_size,
+        "total_offers": total,
+        "total_pages": total_pages,
+        "has_more": page < total_pages,
+        "filter_options": {
+            "airlines": sorted(list(all_airlines)),
+            "price_range": {
+                "min": min((float(o.get("price", 0)) for o in all_offers), default=0),
+                "max": max((float(o.get("price", 0)) for o in all_offers), default=0)
+            }
+        }
+    }
 
 
 @app.delete("/cache/{trip_id}")
@@ -247,6 +400,186 @@ async def clear_cache_entry(trip_id: str):
     """Clear cached results for a trip."""
     deleted = flight_cache.delete(trip_id)
     return {"deleted": deleted, "trip_id": trip_id}
+
+
+# ==========================================
+# FILTER ENDPOINT - Server-side filtering
+# ==========================================
+
+from pydantic import BaseModel
+from typing import Optional, List
+
+class FlightFilters(BaseModel):
+    """Filters to apply to cached flight results."""
+    max_price: Optional[float] = None
+    max_duration_minutes: Optional[int] = None
+    direct_only: bool = False
+    airlines: Optional[List[str]] = None  # Carrier codes
+    has_checked_baggage: Optional[bool] = None
+    departure_time_min: Optional[str] = None  # HH:MM format
+    departure_time_max: Optional[str] = None  # HH:MM format
+    arrival_time_min: Optional[str] = None
+    arrival_time_max: Optional[str] = None
+    sort_by: str = "price"  # price, duration, departure
+    sort_order: str = "asc"  # asc, desc
+
+
+@app.post("/cache/{trip_id}/filter")
+async def filter_cached_results(trip_id: str, filters: FlightFilters, page: int = 1, page_size: int = 10):
+    """
+    Filter and sort cached flight results server-side.
+    This avoids API calls and provides fast filtering.
+    """
+    from datetime import datetime
+    
+    all_offers = flight_cache.get(trip_id)
+    if not all_offers:
+        raise HTTPException(status_code=404, detail="No cached results for this trip")
+    
+    filtered = all_offers.copy()
+    
+    # Parse duration string (PT1H25M) to minutes
+    def parse_duration(dur: str) -> int:
+        if not dur:
+            return 9999
+        import re
+        match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?', dur)
+        if match:
+            hours = int(match.group(1) or 0)
+            minutes = int(match.group(2) or 0)
+            return hours * 60 + minutes
+        return 9999
+    
+    # Parse time string (HH:MM) to minutes from midnight
+    def time_to_minutes(time_str: str) -> int:
+        if not time_str:
+            return 0
+        try:
+            parts = time_str.split(":")
+            return int(parts[0]) * 60 + int(parts[1])
+        except:
+            return 0
+    
+    # Get departure time from ISO datetime
+    def get_departure_minutes(offer: dict) -> int:
+        try:
+            segments = offer.get("outbound_segments", [])
+            if segments:
+                dt = datetime.fromisoformat(segments[0].get("departure_time", "").replace("Z", "+00:00"))
+                return dt.hour * 60 + dt.minute
+        except:
+            pass
+        return 0
+    
+    # Get arrival time from ISO datetime
+    def get_arrival_minutes(offer: dict) -> int:
+        try:
+            segments = offer.get("outbound_segments", [])
+            if segments:
+                dt = datetime.fromisoformat(segments[-1].get("arrival_time", "").replace("Z", "+00:00"))
+                return dt.hour * 60 + dt.minute
+        except:
+            pass
+        return 0
+    
+    # Apply filters
+    if filters.max_price is not None:
+        filtered = [o for o in filtered if float(o.get("price", 9999)) <= filters.max_price]
+    
+    if filters.max_duration_minutes is not None:
+        filtered = [o for o in filtered if parse_duration(o.get("total_duration", "")) <= filters.max_duration_minutes]
+    
+    if filters.direct_only:
+        filtered = [o for o in filtered if o.get("stops", 99) == 0]
+    
+    if filters.airlines:
+        airline_set = set(a.upper() for a in filters.airlines)
+        filtered = [o for o in filtered if o.get("validating_airline", "").upper() in airline_set]
+    
+    if filters.has_checked_baggage is not None:
+        def has_baggage(offer):
+            fare = offer.get("fare_details", [{}])
+            if fare and len(fare) > 0:
+                bag = fare[0].get("baggage", {})
+                if bag:
+                    qty = bag.get("checked_bags_quantity", 0)
+                    return qty > 0 if filters.has_checked_baggage else qty == 0
+            return not filters.has_checked_baggage
+        filtered = [o for o in filtered if has_baggage(o)]
+    
+    if filters.departure_time_min:
+        min_minutes = time_to_minutes(filters.departure_time_min)
+        filtered = [o for o in filtered if get_departure_minutes(o) >= min_minutes]
+    
+    if filters.departure_time_max:
+        max_minutes = time_to_minutes(filters.departure_time_max)
+        filtered = [o for o in filtered if get_departure_minutes(o) <= max_minutes]
+    
+    if filters.arrival_time_min:
+        min_minutes = time_to_minutes(filters.arrival_time_min)
+        filtered = [o for o in filtered if get_arrival_minutes(o) >= min_minutes]
+    
+    if filters.arrival_time_max:
+        max_minutes = time_to_minutes(filters.arrival_time_max)
+        filtered = [o for o in filtered if get_arrival_minutes(o) <= max_minutes]
+    
+    # Sort
+    reverse = filters.sort_order == "desc"
+    if filters.sort_by == "price":
+        filtered.sort(key=lambda o: float(o.get("price", 9999)), reverse=reverse)
+    elif filters.sort_by == "duration":
+        filtered.sort(key=lambda o: parse_duration(o.get("total_duration", "")), reverse=reverse)
+    elif filters.sort_by == "departure":
+        filtered.sort(key=get_departure_minutes, reverse=reverse)
+    
+    # Paginate
+    total = len(filtered)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    # Get unique airlines for filter options
+    all_airlines = set()
+    for o in all_offers:
+        if o.get("validating_airline"):
+            all_airlines.add(o["validating_airline"])
+    
+    return {
+        "offers": filtered[start:end],
+        "page": page,
+        "page_size": page_size,
+        "total_offers": total,
+        "total_pages": total_pages,
+        "has_more": page < total_pages,
+        "filter_options": {
+            "airlines": sorted(list(all_airlines)),
+            "price_range": {
+                "min": min((float(o.get("price", 0)) for o in all_offers), default=0),
+                "max": max((float(o.get("price", 0)) for o in all_offers), default=0)
+            }
+        }
+    }
+
+
+# ==========================================
+# IATA RESOLVER ENDPOINTS
+# ==========================================
+
+from iata_resolver import get_airport_info, batch_resolve_airports, get_city_country_label
+
+@app.get("/iata/{code}")
+async def resolve_iata_code(code: str):
+    """Resolve a single IATA code to city/country."""
+    info = get_airport_info(code)
+    if info:
+        return {"code": code.upper(), **info}
+    return {"code": code.upper(), "city": code.upper(), "country": "", "name": ""}
+
+
+@app.post("/iata/batch")
+async def resolve_iata_batch(codes: List[str]):
+    """Resolve multiple IATA codes at once."""
+    return batch_resolve_airports(codes)
 
 
 @app.get("/logs/stream")

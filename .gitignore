@@ -55,5 +55,24 @@ supabase/functions/*/deno.lock
 # OS
 Thumbs.db
 
+# Runtime data
+server/data/
+
+# Playwright
+playwright-report/
+playwright/.auth/
+test-results/
+
+# Claude Code
+.claude/
+.agent/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
 # Detalles técnicos privados (esquemas, migraciones, documentación interna)
 Detalles_tecnicos/

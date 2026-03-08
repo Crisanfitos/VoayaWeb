@@ -13,20 +13,24 @@ class CacheEntry:
     data: Any
     expires_at: float
     created_at: float
+    is_expired: bool = False
 
 
 class FlightCache:
     """
     In-memory cache for flight results.
-    Each entry is identified by tripId and expires after TTL.
+    Entries have a 5-minute active TTL.
+    After expiration, data is removed but 'expired' status is kept for UI.
+    Hard cleanup happens after 30 minutes.
     """
     
-    def __init__(self, default_ttl_seconds: int = 900):  # 15 minutes
+    def __init__(self, default_ttl_seconds: int = 300):  # 5 minutes active TTL
         self._cache: Dict[str, CacheEntry] = {}
         self.default_ttl = default_ttl_seconds
+        self.tombstone_ttl = 1800  # 30 minutes until full removal
     
     def set(self, key: str, data: Any, ttl_seconds: Optional[int] = None) -> None:
-        """Store data with TTL."""
+        """Store data with active TTL."""
         ttl = ttl_seconds or self.default_ttl
         now = time.time()
         self._cache[key] = CacheEntry(
@@ -34,27 +38,43 @@ class FlightCache:
             expires_at=now + ttl,
             created_at=now
         )
-        # Cleanup expired entries on set (lazy cleanup)
-        self._cleanup_expired()
+        self._cleanup_tombstones()
     
     def get(self, key: str) -> Optional[Any]:
-        """Get data if exists and not expired."""
+        """
+        Get data if exists.
+        Returns None if key missing.
+        Returns dict {"status": "expired"} if expired.
+        Returns actual data list if active.
+        """
         entry = self._cache.get(key)
         if not entry:
             return None
         
-        if time.time() > entry.expires_at:
-            del self._cache[key]
-            return None
+        now = time.time()
         
+        # Check if active TTL passed
+        if now > entry.expires_at:
+            # Mark as expired if not already done
+            if not entry.is_expired:
+                entry.is_expired = True
+                entry.data = None  # Clear data to save memory
+            return {"status": "expired"}
+            
         return entry.data
     
     def get_page(self, key: str, page: int, page_size: int = 10) -> Optional[Dict]:
-        """Get a specific page of cached results."""
-        all_offers = self.get(key)
-        if not all_offers:
+        """Get a specific page of cached results, or expiration status."""
+        result = self.get(key)
+        if not result:
             return None
+            
+        # Check for expired status wrapper
+        if isinstance(result, dict) and result.get("status") == "expired":
+            return {"status": "expired"}
         
+        # Assumption: result is the list of offers
+        all_offers = result
         if not isinstance(all_offers, list):
             return None
         
@@ -66,6 +86,7 @@ class FlightCache:
         page_offers = all_offers[start:end]
         
         return {
+            "status": "active",
             "offers": page_offers,
             "page": page,
             "page_size": page_size,
@@ -75,29 +96,37 @@ class FlightCache:
         }
     
     def exists(self, key: str) -> bool:
-        """Check if key exists and is not expired."""
-        return self.get(key) is not None
+        """Check if key exists (active or expired)."""
+        return key in self._cache
     
     def delete(self, key: str) -> bool:
-        """Delete a key from cache."""
+        """Delete a key from cache completely."""
         if key in self._cache:
             del self._cache[key]
             return True
         return False
     
-    def _cleanup_expired(self) -> int:
-        """Remove expired entries. Returns count of removed items."""
+    def _cleanup_tombstones(self) -> int:
+        """Remove entries older than tombstone_ttl (30 mins)."""
         now = time.time()
-        expired_keys = [k for k, v in self._cache.items() if now > v.expires_at]
+        # Hard limit: created_at + 30 mins
+        expired_keys = [
+            k for k, v in self._cache.items() 
+            if now > (v.created_at + self.tombstone_ttl)
+        ]
         for k in expired_keys:
             del self._cache[k]
         return len(expired_keys)
     
     def stats(self) -> Dict:
         """Get cache statistics."""
-        self._cleanup_expired()
+        self._cleanup_tombstones()
+        active = sum(1 for v in self._cache.values() if not v.is_expired and time.time() < v.expires_at)
+        expired = len(self._cache) - active
         return {
             "entries": len(self._cache),
+            "active": active,
+            "expired": expired,
             "keys": list(self._cache.keys())
         }
 

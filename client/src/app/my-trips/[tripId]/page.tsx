@@ -146,6 +146,27 @@ interface ViajeDetail {
     };
 }
 
+// Filter types for server-side filtering
+interface FlightFilters {
+    max_price?: number;
+    max_duration_minutes?: number;
+    direct_only: boolean;
+    airlines?: string[];
+    has_checked_baggage?: boolean;
+    departure_time_min?: string;
+    departure_time_max?: string;
+    sort_by: 'price' | 'duration' | 'departure';
+    sort_order: 'asc' | 'desc';
+}
+
+interface FilterOptions {
+    airlines: string[];
+    price_range: { min: number; max: number };
+}
+
+// IATA airport info cache
+const airportCache: Record<string, { city: string; country: string }> = {};
+
 // ==========================================
 // HELPERS
 // ==========================================
@@ -293,6 +314,185 @@ const processedDates = (extracted?: ExtractedData) => {
     };
 };
 
+// Airport city resolver helper
+const getAirportCity = (code: string): string => {
+    if (airportCache[code]) return airportCache[code].city;
+    return code;
+};
+
+// FilterPanel component with Apply button
+const FilterPanel = ({
+    filters,
+    setFilters,
+    filterOptions,
+    onApply,
+    isLoading
+}: {
+    filters: FlightFilters;
+    setFilters: (f: FlightFilters) => void;
+    filterOptions: FilterOptions | null;
+    onApply: () => void;
+    isLoading: boolean;
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <div className="bg-surface-default dark:bg-card-dark border border-stroke dark:border-input-dark rounded-2xl mb-4 overflow-hidden">
+            {/* Filter Header */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-voaya-primary">tune</span>
+                    <span className="font-semibold text-text-main dark:text-white">Filtros</span>
+                    {(filters.direct_only || filters.max_price || filters.airlines?.length) && (
+                        <span className="px-2 py-0.5 bg-voaya-primary/10 text-voaya-primary text-xs rounded-full">
+                            Activos
+                        </span>
+                    )}
+                </div>
+                <span className={`material-symbols-outlined transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                    expand_more
+                </span>
+            </button>
+
+            {/* Filter Body */}
+            {isExpanded && (
+                <div className="p-4 pt-0 border-t border-stroke/50 dark:border-input-dark/50">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                        {/* Direct flights */}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={filters.direct_only}
+                                onChange={(e) => setFilters({ ...filters, direct_only: e.target.checked })}
+                                className="w-4 h-4 rounded border-stroke dark:border-input-dark text-voaya-primary focus:ring-voaya-primary"
+                            />
+                            <span className="text-sm text-text-main dark:text-white">Solo directos</span>
+                        </label>
+
+                        {/* Has baggage */}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={filters.has_checked_baggage === true}
+                                onChange={(e) => setFilters({ ...filters, has_checked_baggage: e.target.checked ? true : undefined })}
+                                className="w-4 h-4 rounded border-stroke dark:border-input-dark text-voaya-primary focus:ring-voaya-primary"
+                            />
+                            <span className="text-sm text-text-main dark:text-white">Con equipaje</span>
+                        </label>
+
+                        {/* Max price */}
+                        <div>
+                            <label className="text-xs text-text-muted block mb-1">Precio máx.</label>
+                            <input
+                                type="number"
+                                placeholder={filterOptions?.price_range.max?.toString() || "500"}
+                                value={filters.max_price || ''}
+                                onChange={(e) => setFilters({ ...filters, max_price: e.target.value ? Number(e.target.value) : undefined })}
+                                className="w-full px-3 py-2 text-sm rounded-lg border border-stroke dark:border-input-dark bg-white dark:bg-input-dark text-text-main dark:text-white"
+                            />
+                        </div>
+
+                        {/* Max duration */}
+                        <div>
+                            <label className="text-xs text-text-muted block mb-1">Duración máx. (min)</label>
+                            <input
+                                type="number"
+                                placeholder="600"
+                                value={filters.max_duration_minutes || ''}
+                                onChange={(e) => setFilters({ ...filters, max_duration_minutes: e.target.value ? Number(e.target.value) : undefined })}
+                                className="w-full px-3 py-2 text-sm rounded-lg border border-stroke dark:border-input-dark bg-white dark:bg-input-dark text-text-main dark:text-white"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Airlines */}
+                    {filterOptions?.airlines && filterOptions.airlines.length > 0 && (
+                        <div className="mt-4">
+                            <label className="text-xs text-text-muted block mb-2">Aerolíneas</label>
+                            <div className="flex flex-wrap gap-2">
+                                {filterOptions.airlines.map(airline => (
+                                    <button
+                                        key={airline}
+                                        onClick={() => {
+                                            const current = filters.airlines || [];
+                                            const updated = current.includes(airline)
+                                                ? current.filter(a => a !== airline)
+                                                : [...current, airline];
+                                            setFilters({ ...filters, airlines: updated.length > 0 ? updated : undefined });
+                                        }}
+                                        className={`px-3 py-1 text-xs rounded-full border transition-colors ${filters.airlines?.includes(airline)
+                                            ? 'bg-voaya-primary text-white border-voaya-primary'
+                                            : 'border-stroke dark:border-input-dark text-text-main dark:text-white hover:border-voaya-primary'
+                                            }`}
+                                    >
+                                        {airline}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sort */}
+                    <div className="mt-4 flex items-center gap-4">
+                        <div>
+                            <label className="text-xs text-text-muted block mb-1">Ordenar por</label>
+                            <select
+                                value={filters.sort_by}
+                                onChange={(e) => setFilters({ ...filters, sort_by: e.target.value as any })}
+                                className="px-3 py-2 text-sm rounded-lg border border-stroke dark:border-input-dark bg-white dark:bg-input-dark text-text-main dark:text-white"
+                            >
+                                <option value="price">Precio</option>
+                                <option value="duration">Duración</option>
+                                <option value="departure">Hora salida</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs text-text-muted block mb-1">Orden</label>
+                            <select
+                                value={filters.sort_order}
+                                onChange={(e) => setFilters({ ...filters, sort_order: e.target.value as any })}
+                                className="px-3 py-2 text-sm rounded-lg border border-stroke dark:border-input-dark bg-white dark:bg-input-dark text-text-main dark:text-white"
+                            >
+                                <option value="asc">Menor a mayor</option>
+                                <option value="desc">Mayor a menor</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Apply Button */}
+                    <div className="mt-4 flex justify-end gap-2">
+                        <button
+                            onClick={() => setFilters({ direct_only: false, sort_by: 'price', sort_order: 'asc' })}
+                            className="px-4 py-2 text-sm text-text-muted hover:text-text-main dark:hover:text-white transition-colors"
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            onClick={onApply}
+                            disabled={isLoading}
+                            className="px-6 py-2 bg-voaya-primary text-white text-sm font-bold rounded-xl hover:bg-voaya-primary-dark transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Aplicando...
+                                </>
+                            ) : (
+                                <>
+                                    <span className="material-symbols-outlined text-[16px]">check</span>
+                                    Aplicar filtros
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const FlightCard = ({ offer }: { offer: FlightOffer }) => {
     const outbound = offer.outbound_segments;
@@ -369,6 +569,9 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                     {format(new Date(firstOutbound.departure_time), 'HH:mm')}
                                 </span>
                                 <span className="text-xs text-text-muted">{firstOutbound.departure_airport}</span>
+                                <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
+                                    {getAirportCity(firstOutbound.departure_airport)}
+                                </span>
                                 {firstOutbound.departure_terminal && (
                                     <span className="text-[10px] text-text-muted block">T{firstOutbound.departure_terminal}</span>
                                 )}
@@ -381,7 +584,7 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                         <div key={i}
                                             className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
                                             style={{ left: `${((i + 1) / offer.stops) * 80 + 10}%` }}
-                                            title={seg.arrival_airport}
+                                            title={`${seg.arrival_airport} - ${getAirportCity(seg.arrival_airport)}`}
                                         />
                                     ))}
                                 </div>
@@ -395,6 +598,9 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                     {format(new Date(lastOutbound.arrival_time), 'HH:mm')}
                                 </span>
                                 <span className="text-xs text-text-muted">{lastOutbound.arrival_airport}</span>
+                                <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
+                                    {getAirportCity(lastOutbound.arrival_airport)}
+                                </span>
                                 {lastOutbound.arrival_terminal && (
                                     <span className="text-[10px] text-text-muted block">T{lastOutbound.arrival_terminal}</span>
                                 )}
@@ -421,6 +627,9 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                         {format(new Date(returnFlight[0].departure_time), 'HH:mm')}
                                     </span>
                                     <span className="text-xs text-text-muted">{returnFlight[0].departure_airport}</span>
+                                    <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
+                                        {getAirportCity(returnFlight[0].departure_airport)}
+                                    </span>
                                     {returnFlight[0].departure_terminal && (
                                         <span className="text-[10px] text-text-muted block">T{returnFlight[0].departure_terminal}</span>
                                     )}
@@ -433,7 +642,7 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                             <div key={i}
                                                 className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
                                                 style={{ left: `${((i + 1) / (returnFlight.length - 1)) * 80 + 10}%` }}
-                                                title={seg.arrival_airport}
+                                                title={`${seg.arrival_airport} - ${getAirportCity(seg.arrival_airport)}`}
                                             />
                                         ))}
                                     </div>
@@ -447,6 +656,9 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
                                         {format(new Date(returnFlight[returnFlight.length - 1].arrival_time), 'HH:mm')}
                                     </span>
                                     <span className="text-xs text-text-muted">{returnFlight[returnFlight.length - 1].arrival_airport}</span>
+                                    <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
+                                        {getAirportCity(returnFlight[returnFlight.length - 1].arrival_airport)}
+                                    </span>
                                     {returnFlight[returnFlight.length - 1].arrival_terminal && (
                                         <span className="text-[10px] text-text-muted block">T{returnFlight[returnFlight.length - 1].arrival_terminal}</span>
                                     )}
@@ -528,6 +740,232 @@ export default function TripDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Flight display state
+    const [displayedOffers, setDisplayedOffers] = useState<FlightOffer[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [totalOffers, setTotalOffers] = useState(0);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    // Filter state
+    const [filters, setFilters] = useState<FlightFilters>({
+        direct_only: false,
+        sort_by: 'price',
+        sort_order: 'asc'
+    });
+    const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+    const [isFiltering, setIsFiltering] = useState(false);
+    const [isFilteredView, setIsFilteredView] = useState(false);
+    const [isExpired, setIsExpired] = useState(false);
+
+    // Microservice URL
+    const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:3003';
+
+    // Refresh search function (when expired)
+    const refreshSearch = async () => {
+        if (!viaje?.id) return;
+        setLoading(true);
+        setIsExpired(false);
+        try {
+            // Trigger new search via backend
+            await fetch(`${AGENT_URL}/search-flights`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tripId: viaje.id,
+                    extracted_data: viaje.metadatos?.extracted_data,
+                    secret: process.env.NEXT_PUBLIC_WEBHOOK_SECRET
+                })
+            });
+            // Poll will pick up new results
+            setViaje(prev => prev ? {
+                ...prev,
+                metadatos: {
+                    ...prev.metadatos,
+                    flight_status: 'searching'
+                }
+            } : null);
+        } catch (err) {
+            console.error('Error refreshing search:', err);
+            setLoading(false);
+        }
+    };
+
+    // Fetch initial flights from cache
+    const fetchInitialFlights = async () => {
+        if (!viaje?.id) return;
+        // Don't set global loading as we might be showing skeleton
+
+        try {
+            const response = await fetch(`${AGENT_URL}/cache/${viaje.id}?page=1&page_size=10`);
+
+            if (response.ok) {
+                const data = await response.json();
+
+                if (data.status === 'expired') {
+                    setIsExpired(true);
+                    return;
+                }
+
+                if (data.offers) {
+                    setDisplayedOffers(data.offers);
+                    setHasMore(data.has_more || false);
+                    setTotalOffers(data.total_offers || 0);
+                    setCurrentPage(1);
+
+                    // Extract all airport codes to resolve
+                    const codes = new Set<string>();
+                    data.offers.forEach((offer: FlightOffer) => {
+                        offer.outbound_segments?.forEach(s => {
+                            codes.add(s.departure_airport);
+                            codes.add(s.arrival_airport);
+                        });
+                        offer.return_segments?.forEach(s => {
+                            codes.add(s.departure_airport);
+                            codes.add(s.arrival_airport);
+                        });
+                    });
+                    resolveAirportCodes(Array.from(codes));
+
+                    // Extract filter options from first load
+                    const airlines = new Set<string>();
+                    data.offers.forEach((o: FlightOffer) => {
+                        if (o.validating_airline) airlines.add(o.validating_airline);
+                    });
+                    const prices = data.offers.map((o: FlightOffer) => parseFloat(o.price));
+                    setFilterOptions({
+                        airlines: Array.from(airlines).sort(),
+                        price_range: {
+                            min: Math.min(...prices),
+                            max: Math.max(...prices)
+                        }
+                    });
+                }
+            } else if (response.status === 404) {
+                // Convert 404 to expired if we expected results
+                setIsExpired(true);
+            }
+        } catch (err) {
+            console.error('Error fetching initial flights:', err);
+        }
+    };
+
+    // Initialize: Fetch flights when trip is loaded and status is completed
+    useEffect(() => {
+        if (viaje?.id && viaje?.metadatos?.flight_status === 'completed' && displayedOffers.length === 0 && !isExpired && !isFilteredView) {
+            fetchInitialFlights();
+        }
+    }, [viaje?.id, viaje?.metadatos?.flight_status, isExpired]);
+
+    // Load more function
+    const loadMore = async () => {
+        if (isLoadingMore || !viaje?.id) return;
+        setIsLoadingMore(true);
+
+        try {
+            const nextPage = currentPage + 1;
+            let url = `${AGENT_URL}/cache/${viaje.id}?page=${nextPage}&page_size=10`;
+            let method = 'GET';
+            let body = undefined;
+            let headers = undefined;
+
+            if (isFilteredView) {
+                url = `${AGENT_URL}/cache/${viaje.id}/filter?page=${nextPage}&page_size=10`;
+                method = 'POST';
+                body = JSON.stringify(filters);
+                headers = { 'Content-Type': 'application/json' };
+            }
+
+            const response = await fetch(url, { method, headers, body });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Check if expired
+                if (data.status === 'expired') {
+                    setIsExpired(true);
+                    return;
+                }
+
+                if (data.offers && data.offers.length > 0) {
+                    setDisplayedOffers(prev => [...prev, ...data.offers]);
+                    setCurrentPage(nextPage);
+                    setHasMore(data.has_more || false);
+                } else {
+                    setHasMore(false);
+                }
+            } else if (response.status === 404) {
+                setIsExpired(true);
+            }
+        } catch (err) {
+            console.error('Error loading more flights:', err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
+
+    // Apply filters function
+    const applyFilters = async () => {
+        if (!viaje?.id) return;
+        setIsFiltering(true);
+        setIsFilteredView(true);
+
+        try {
+            const response = await fetch(`${AGENT_URL}/cache/${viaje.id}/filter?page=1&page_size=10`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(filters)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                // Check if expired
+                if (data.status === 'expired') {
+                    setIsExpired(true);
+                    return;
+                }
+
+                setDisplayedOffers(data.offers || []);
+                setCurrentPage(1);
+                setHasMore(data.has_more || false);
+                setTotalOffers(data.total_offers || 0);
+                if (data.filter_options) {
+                    setFilterOptions(data.filter_options);
+                }
+            } else if (response.status === 404) {
+                setIsExpired(true);
+            }
+        } catch (err) {
+            console.error('Error applying filters:', err);
+        } finally {
+            setIsFiltering(false);
+        }
+    };
+
+    // Resolve airport codes to cities
+    const resolveAirportCodes = async (codes: string[]) => {
+        const unresolvedCodes = codes.filter(c => c && !airportCache[c]);
+        if (unresolvedCodes.length === 0) return;
+
+        try {
+            const response = await fetch(`${AGENT_URL}/iata/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(unresolvedCodes)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                Object.entries(data).forEach(([code, info]: [string, any]) => {
+                    airportCache[code] = { city: info.city, country: info.country };
+                });
+            }
+        } catch (err) {
+            console.error('Error resolving airport codes:', err);
+        }
+    };
+
     // Polling logic
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -581,6 +1019,7 @@ export default function TripDetailPage() {
     }, [viaje]);
 
 
+
     if (loading && !viaje) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background-light dark:bg-background">
@@ -608,9 +1047,9 @@ export default function TripDetailPage() {
     }
 
     const extracted = viaje.metadatos?.extracted_data;
-    const flights = viaje.metadatos?.flight_results;
+    // const flights = viaje.metadatos?.flight_results; // Deprecated: data fetched from API
     const isSearching = viaje.metadatos?.flight_status === 'searching';
-    const hasFlights = flights && flights.offers && flights.offers.length > 0;
+    const hasFlights = (totalOffers > 0 || displayedOffers.length > 0);
 
     return (
         <main className="min-h-screen bg-background-light dark:bg-background pb-20">
@@ -632,7 +1071,7 @@ export default function TripDetailPage() {
                                     </h2>
                                     <p className="text-text-secondary dark:text-text-muted mt-1 text-sm">
                                         {hasFlights
-                                            ? `Encontramos ${flights.total_offers} opciones para tu viaje`
+                                            ? `Encontramos ${totalOffers} opciones para tu viaje`
                                             : 'Buscando las mejores conexiones...'
                                         }
                                     </p>
@@ -645,53 +1084,103 @@ export default function TripDetailPage() {
                                 )}
                             </div>
 
-                            {/* LIST OF FLIGHTS */}
-                            <div className="space-y-4">
-                                {isSearching && !hasFlights && (
-                                    <>
-                                        <FlightSkeleton />
-                                        <FlightSkeleton />
-                                        <FlightSkeleton />
-                                    </>
-                                )}
-
-                                {!isSearching && !hasFlights && (
-                                    <div className="text-center py-12 border-2 border-dashed border-stroke dark:border-input-dark rounded-2xl">
-                                        <span className="material-symbols-outlined text-4xl text-text-muted mb-2">flight_off</span>
-                                        <p className="text-text-secondary font-medium">No se encontraron vuelos para estas fechas.</p>
-                                    </div>
-                                )}
-
-                                {hasFlights && flights.offers.map((offer) => (
-                                    <FlightCard key={offer.id} offer={offer} />
-                                ))}
-
-                                {/* Load More Button */}
-                                {hasFlights && flights.has_more && (
-                                    <div className="pt-4 text-center">
-                                        <button
-                                            className="px-6 py-3 bg-voaya-primary/10 text-voaya-primary font-bold rounded-xl hover:bg-voaya-primary hover:text-white transition-all flex items-center gap-2 mx-auto"
-                                            onClick={() => {
-                                                // TODO: Implement load more from cache
-                                                // Call /cache/{tripId}?page=2
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined">expand_more</span>
-                                            Cargar más vuelos
-                                            <span className="text-xs opacity-70">
-                                                ({flights.offers.length} de {flights.total_offers})
-                                            </span>
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Pagination info */}
-                                {hasFlights && !flights.has_more && flights.total_offers > flights.offers.length && (
-                                    <p className="text-center text-text-muted text-sm pt-4">
-                                        Mostrando {flights.offers.length} de {flights.total_offers} vuelos
+                            {/* EXPIRED SEARCH UI */}
+                            {isExpired && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 mb-6 text-center">
+                                    <span className="material-symbols-outlined text-4xl text-amber-500 mb-2">timer_off</span>
+                                    <h3 className="text-lg font-bold text-text-main dark:text-white mb-2">
+                                        Resultados vencidos
+                                    </h3>
+                                    <p className="text-text-secondary dark:text-text-muted mb-4 text-sm max-w-md mx-auto">
+                                        Los precios y disponibilidad de vuelos cambian constantemente. Por seguridad, los resultados antiguas han expirado.
                                     </p>
-                                )}
-                            </div>
+                                    <button
+                                        onClick={refreshSearch}
+                                        disabled={loading}
+                                        className="px-6 py-3 bg-voaya-primary text-white font-bold rounded-xl hover:bg-voaya-primary-dark transition-all flex items-center gap-2 mx-auto"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Buscando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined">refresh</span>
+                                                Buscar de nuevo actualizados
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* FILTER PANEL */}
+                            {hasFlights && !isExpired && (
+                                <FilterPanel
+                                    filters={filters}
+                                    setFilters={setFilters}
+                                    filterOptions={filterOptions}
+                                    onApply={applyFilters}
+                                    isLoading={isFiltering}
+                                />
+                            )}
+
+                            {/* LIST OF FLIGHTS */}
+                            {!isExpired && (
+                                <div className="space-y-4">
+                                    {isSearching && !hasFlights && (
+                                        <>
+                                            <FlightSkeleton />
+                                            <FlightSkeleton />
+                                            <FlightSkeleton />
+                                        </>
+                                    )}
+
+                                    {!isSearching && !hasFlights && (
+                                        <div className="text-center py-12 border-2 border-dashed border-stroke dark:border-input-dark rounded-2xl">
+                                            <span className="material-symbols-outlined text-4xl text-text-muted mb-2">flight_off</span>
+                                            <p className="text-text-secondary font-medium">No se encontraron vuelos para estas fechas.</p>
+                                        </div>
+                                    )}
+
+                                    {displayedOffers.map((offer) => (
+                                        <FlightCard key={offer.id} offer={offer} />
+                                    ))}
+
+                                    {/* Load More Button */}
+                                    {hasMore && (
+                                        <div className="pt-4 text-center">
+                                            <button
+                                                className="px-6 py-3 bg-voaya-primary/10 text-voaya-primary font-bold rounded-xl hover:bg-voaya-primary hover:text-white transition-all flex items-center gap-2 mx-auto disabled:opacity-50"
+                                                onClick={loadMore}
+                                                disabled={isLoadingMore}
+                                            >
+                                                {isLoadingMore ? (
+                                                    <>
+                                                        <span className="w-4 h-4 border-2 border-voaya-primary/30 border-t-voaya-primary rounded-full animate-spin" />
+                                                        Cargando...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="material-symbols-outlined">expand_more</span>
+                                                        Cargar más vuelos
+                                                        <span className="text-xs opacity-70">
+                                                            ({displayedOffers.length} de {totalOffers})
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* All loaded message */}
+                                    {displayedOffers.length > 0 && !hasMore && totalOffers > 10 && (
+                                        <p className="text-center text-text-muted text-sm pt-4">
+                                            ✓ Mostrando todos los {displayedOffers.length} vuelos
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* UPCOMING: HOTELS */}

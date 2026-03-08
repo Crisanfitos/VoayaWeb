@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import { ImageService } from '../../services/image.service';
 import { supabaseAdmin } from '../../supabase/admin';
 import { mapearViajeDesdeBD, mapearViajeABD, Viaje, ViajeBase, TabViajes } from '../../../../shared/types/viaje';
 import { mapearVueloDesdeBD } from '../../../../shared/types/vuelo';
@@ -135,6 +136,24 @@ router.get('/:id', async (req, res) => {
 
         if (viajeError || !viajeData) {
             return res.status(404).json({ error: 'Viaje no encontrado' });
+        }
+
+        // Lazy Enrich: Si no tiene imagen, buscarla y actualizar
+        if (!viajeData.imagen_url && viajeData.destino) {
+            try {
+                // Async update (fire and forget for speed, or await for immediate consistency)
+                // Let's await to ensure user sees it
+                const newUrl = await ImageService.resolveImage(viajeData.destino);
+                if (newUrl) {
+                    await supabaseAdmin
+                        .from('viajes')
+                        .update({ imagen_url: newUrl })
+                        .eq('id', id);
+                    viajeData.imagen_url = newUrl;
+                }
+            } catch (e) {
+                console.error('Error resolving image for trip:', id, e);
+            }
         }
 
         const viajeBase = mapearViajeDesdeBD(viajeData);
@@ -320,14 +339,34 @@ router.post('/:tripId/flight-results', async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
+        // Fetch existing trip to preserve metadata
+        const { data: currentTrip, error: fetchError } = await supabaseAdmin
+            .from('viajes')
+            .select('metadatos')
+            .eq('id', tripId)
+            .single();
+
+        if (fetchError || !currentTrip) {
+            console.error('Trip not found for flight results update:', tripId);
+            return res.status(404).json({ error: 'Trip not found' });
+        }
+
+        const newMetadata = {
+            ...(currentTrip.metadatos || {}),
+            flight_status: 'completed',
+            flight_summary: {
+                total_offers: flight_results?.total_offers || 0,
+                search_timestamp: flight_results?.search_timestamp,
+                cache_id: tripId,
+                status: flight_results?.status || 'active'
+            },
+            updated_at: new Date().toISOString()
+        };
+
         const { error } = await supabaseAdmin
             .from('viajes')
             .update({
-                metadatos: {
-                    flight_status: 'completed',
-                    flight_results,
-                    updated_at: new Date().toISOString()
-                }
+                metadatos: newMetadata
             })
             .eq('id', tripId);
 
