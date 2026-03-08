@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../../supabase/admin';
-import { aiRouter } from '../../services/ai/ai-router.service';
+import { geminiService, type ChatMessage } from '../../services/ai/gemini.service';
 import { buildSystemPrompt } from '../../services/ai/system-prompts';
-import type { ChatMessage } from '../../services/ai/types';
 import { generateProvisionalTitle, generateFinalTitle } from '../../services/title-generator.service';
 import type { FlightOptions } from './types';
 
@@ -140,7 +139,7 @@ router.post('/message', async (req, res) => {
             .single();
 
         const categories = chatData?.categorias || [];
-        console.log('[Chat API] Sending message with AI Router, categories:', categories);
+        console.log('[Chat API] Sending message with Gemini, categories:', categories);
 
         // Get user preferences for personalized system prompt
         let userPreferences = null;
@@ -186,7 +185,7 @@ router.post('/message', async (req, res) => {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.setHeader('Transfer-Encoding', 'chunked');
 
-            const stream = aiRouter.sendMessageStream(messages, systemPrompt);
+            const stream = geminiService.sendMessageStream(messages, systemPrompt);
 
             for await (const chunk of stream) {
                 res.write(chunk);

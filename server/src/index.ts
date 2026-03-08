@@ -90,13 +90,6 @@ export default app;
 
 // Iniciar servidor solo si no es test
 if (require.main === module) {
-    // Start monitoring dashboard
-    import('./services/ai/monitoring-server').then(({ startMonitoringServer }) => {
-        startMonitoringServer();
-    }).catch(err => {
-        console.warn('Could not start monitoring server:', err.message);
-    });
-
     app.listen(port, () => {
         console.log(`🚀 Server running on port ${port}`);
         console.log(`Health check available at http://localhost:${port}/health`);
