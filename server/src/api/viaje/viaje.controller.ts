@@ -12,6 +12,8 @@ import { supabaseAdmin } from '../../supabase/admin';
 import { mapearViajeDesdeBD, mapearViajeABD, Viaje, ViajeBase, TabViajes } from '../../../../shared/types/viaje';
 import { mapearVueloDesdeBD } from '../../../../shared/types/vuelo';
 import { mapearHotelDesdeBD } from '../../../../shared/types/hotel';
+import { geminiService } from '../../services/ai/gemini.service';
+import { VueloService } from '../../services/vuelo.service';
 
 const router = Router();
 
@@ -247,6 +249,115 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         console.error('Error actualizando viaje:', error);
         res.status(500).json({ error: 'Error al actualizar viaje' });
+    }
+});
+
+/**
+ * POST /api/viajes/:id/re-search
+ * Triggers a new flight search for an existing trip.
+ */
+router.post('/:id/re-search', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get trip data
+        const { data: trip, error: tripError } = await supabaseAdmin
+            .from('viajes')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (tripError || !trip) {
+            return res.status(404).json({ error: 'Viaje no encontrado' });
+        }
+
+        // ALWAYS try to get fresh extraction data from chat history if available
+        // to take advantage of prompt improvements
+        let extractedData = null;
+
+        if (trip.chat_id) {
+            const { data: messages } = await supabaseAdmin
+                .from('mensajes')
+                .select('*')
+                .eq('chat_id', trip.chat_id)
+                .order('fecha_creacion', { ascending: true });
+
+            if (messages && messages.length > 0) {
+                console.log(`[Re-Search] Re-extracting data for trip ${id} from chat ${trip.chat_id}`);
+                const contextMessages = messages.map(m => ({
+                    role: m.rol as 'user' | 'assistant' | 'system',
+                    content: m.contenido
+                }));
+                extractedData = await geminiService.extractTravelData(contextMessages);
+            }
+        }
+
+        // Fallback to existing metadata if chat extraction failed or no chat linked
+        if (!extractedData) {
+            extractedData = trip.metadatos?.extracted_data;
+        }
+
+        if (!extractedData || !extractedData.origin || !extractedData.destination || !extractedData.departure_date) {
+            return res.status(400).json({ error: 'No se pudieron obtener datos suficientes para la búsqueda (origen, destino, fecha)' });
+        }
+
+        // Trigger search (Async)
+        (async () => {
+            try {
+                // Update status to searching
+                await supabaseAdmin
+                    .from('viajes')
+                    .update({
+                        metadatos: {
+                            ...(trip.metadatos || {}),
+                            flight_status: 'searching'
+                        }
+                    })
+                    .eq('id', id);
+
+                const flights = await VueloService.buscarVuelos({
+                    origen: extractedData.origin,
+                    destino: extractedData.destination,
+                    fechaSalida: extractedData.departure_date,
+                    fechaRegreso: extractedData.return_date,
+                    adultos: extractedData.passengers?.adults || 1
+                });
+
+                // Update metadata with results
+                await supabaseAdmin
+                    .from('viajes')
+                    .update({
+                        metadatos: {
+                            ...(trip.metadatos || {}),
+                            extracted_data: extractedData, // Save it if we extracted it now
+                            flight_status: 'completed',
+                            flights_found: flights.length,
+                            recommended_flights: flights.slice(0, 10), // Aumentamos a 10 resultados
+                            last_search_at: new Date().toISOString()
+                        }
+                    })
+                    .eq('id', id);
+                
+                console.log(`[Re-Search] Completed for trip ${id}. Found ${flights.length} flights.`);
+            } catch (err) {
+                console.error(`[Re-Search] Error for trip ${id}:`, err);
+                await supabaseAdmin
+                    .from('viajes')
+                    .update({
+                        metadatos: {
+                            ...(trip.metadatos || {}),
+                            flight_status: 'error',
+                            flight_error: (err as any).message
+                        }
+                    })
+                    .eq('id', id);
+            }
+        })();
+
+        res.json({ ok: true, message: 'Búsqueda de vuelos iniciada' });
+    } catch (error) {
+        console.error('Error in re-search endpoint:', error);
+        res.status(500).json({ error: 'Error al iniciar re-búsqueda' });
     }
 });
 

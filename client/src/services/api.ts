@@ -138,6 +138,17 @@ export class ApiService {
         return this.fetchApi(`/vuelos/${encodeURIComponent(id)}`, { method: 'GET' });
     }
 
+    static async obtenerVuelosDelViaje(viajeId: string) {
+        return this.fetchApi(`/vuelos/viaje/${encodeURIComponent(viajeId)}`, { method: 'GET' });
+    }
+
+    static async resolverIataBatch(codes: string[]) {
+        return this.fetchApi('/vuelos/iata/batch', {
+            method: 'POST',
+            body: JSON.stringify(codes),
+        });
+    }
+
     static async crearVuelo(vuelo: any) {
         return this.fetchApi('/vuelos', {
             method: 'POST',
@@ -225,6 +236,12 @@ export class ApiService {
 
     static async eliminarViaje(id: string) {
         return this.fetchApi(`/viajes/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    }
+
+    static async reBuscarVuelos(viajeId: string) {
+        return this.fetchApi(`/viajes/${encodeURIComponent(viajeId)}/re-search`, {
+            method: 'POST',
+        });
     }
 
     // ==========================================

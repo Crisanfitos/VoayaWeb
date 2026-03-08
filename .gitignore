@@ -76,3 +76,4 @@ venv/
 
 # Detalles técnicos privados (esquemas, migraciones, documentación interna)
 Detalles_tecnicos/
+.vercel

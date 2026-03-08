@@ -12,6 +12,10 @@ const envPath = process.env.NODE_ENV === 'production'
 dotenv.config({ path: envPath });
 
 console.log(`Loading environment variables from: ${envPath}`);
+console.log(`DUFFEL_TOKEN_LOADED: ${!!process.env.DUFFEL_ACCESS_TOKEN}`);
+if (process.env.DUFFEL_ACCESS_TOKEN) {
+    console.log(`DUFFEL_TOKEN_PREFIX: ${process.env.DUFFEL_ACCESS_TOKEN.substring(0, 12)}...`);
+}
 
 // Importar rutas
 import chatRoutes from './api/chat/chat.controller';

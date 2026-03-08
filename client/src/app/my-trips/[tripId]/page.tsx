@@ -189,7 +189,7 @@ function formatDateDisplay(dateStr?: string) {
 // SUB-COMPONENTS (Inline for simplicity, can extract later)
 // ==========================================
 
-const TripHeader = ({ viaje, extracted }: { viaje: ViajeDetail, extracted?: ExtractedData }) => {
+const TripHeader = ({ viaje, extracted, onRefresh, isRefreshing }: { viaje: ViajeDetail, extracted?: ExtractedData, onRefresh: () => void, isRefreshing: boolean }) => {
     // Usar fechas del viaje directamente, y si no existen, intentar de los metadatos
     const fechaInicio = viaje.fechaInicio || extracted?.departure_date;
     const fechaFin = viaje.fechaFin || extracted?.return_date;
@@ -216,10 +216,21 @@ const TripHeader = ({ viaje, extracted }: { viaje: ViajeDetail, extracted?: Extr
 
             <div className="relative z-10 w-full max-w-[1200px] mx-auto px-6 pb-12">
                 <div className="flex flex-col gap-6">
-                    <Link href="/my-trips" className="self-start text-white/80 hover:text-white flex items-center gap-2 transition-colors mb-4 backdrop-blur-md px-3 py-1.5 rounded-full bg-black/20 hover:bg-black/40 border border-white/10">
-                        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                        <span className="text-sm font-medium">Volver a mis viajes</span>
-                    </Link>
+                    <div className="flex justify-between items-start">
+                        <Link href="/my-trips" className="self-start text-white/80 hover:text-white flex items-center gap-2 transition-colors mb-4 backdrop-blur-md px-3 py-1.5 rounded-full bg-black/20 hover:bg-black/40 border border-white/10">
+                            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                            <span className="text-sm font-medium">Volver a mis viajes</span>
+                        </Link>
+
+                        <button 
+                            onClick={onRefresh}
+                            disabled={isRefreshing}
+                            className="text-white/80 hover:text-white flex items-center gap-2 transition-colors mb-4 backdrop-blur-md px-4 py-1.5 rounded-full bg-voaya-primary/40 hover:bg-voaya-primary/60 border border-white/20"
+                        >
+                            <span className={`material-symbols-outlined text-[18px] ${isRefreshing ? 'animate-spin' : ''}`}>refresh</span>
+                            <span className="text-sm font-bold">{isRefreshing ? 'Buscando...' : 'Volver a buscar vuelos'}</span>
+                        </button>
+                    </div>
 
                     {/* Main Info */}
                     <div className="space-y-2">
@@ -494,174 +505,134 @@ const FilterPanel = ({
     );
 };
 
-const FlightCard = ({ offer }: { offer: FlightOffer }) => {
-    const outbound = offer.outbound_segments;
-    const returnFlight = offer.return_segments;
-    const fareDetails = offer.fare_details?.[0];
-
-    if (!outbound || outbound.length === 0) {
+const FlightCard = ({ offer }: { offer: any }) => {
+    const outbound = offer.escalas || [];
+    const returnFlight = offer.metadatos?.return_flight;
+    const isDirect = offer.esDirecto;
+    
+    if (outbound.length === 0 && !offer.aeropuertoOrigen) {
         return null;
     }
 
-    const firstOutbound = outbound[0];
-    const lastOutbound = outbound[outbound.length - 1];
-
-    // Get intermediate stops for display
-    const getStopoverAirports = (segments: FlightSegment[]) => {
-        if (segments.length <= 1) return null;
-        return segments.slice(0, -1).map(s => s.arrival_airport).join(' → ');
+    const firstOutbound = outbound[0] || { 
+        origen: offer.aeropuertoOrigen, 
+        destino: offer.aeropuertoDestino,
+        fechaSalida: offer.fechaSalida,
+        fechaLlegada: offer.fechaLlegada,
+        aerolinea: offer.metadatos?.carrier_name || 'Aerolínea'
     };
+    
+    const lastOutbound = outbound.length > 0 ? outbound[outbound.length - 1] : firstOutbound;
 
     const handleBookingClick = () => {
-        if (offer.booking_url) {
-            window.open(offer.booking_url, '_blank', 'noopener,noreferrer');
+        let url = `https://www.google.com/travel/flights?q=Flights%20to%20${offer.aeropuertoDestino}%20from%20${offer.aeropuertoOrigen}%20on%20${offer.fechaSalida.split('T')[0]}`;
+        if (returnFlight) {
+            url += `%20returning%20on%20${returnFlight.fechaSalida.split('T')[0]}`;
         }
+        window.open(url, '_blank');
     };
 
     return (
         <div className="group bg-surface-default dark:bg-card-dark border border-stroke dark:border-input-dark rounded-2xl p-5 hover:border-voaya-primary/50 hover:shadow-lg transition-all">
-            {/* Header with airline and fare type */}
+            {/* Header with airline */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-stroke/50 dark:border-input-dark/50">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-voaya-primary/10 dark:bg-voaya-primary/20 flex items-center justify-center">
-                        <span className="font-bold text-sm text-voaya-primary">{offer.validating_airline || firstOutbound.carrier_code}</span>
+                        <span className="font-bold text-sm text-voaya-primary">
+                            {firstOutbound.aerolinea?.substring(0, 2).toUpperCase() || 'FL'}
+                        </span>
                     </div>
                     <div>
                         <p className="font-semibold text-text-main dark:text-white text-sm">
-                            {offer.validating_airline_name || firstOutbound.carrier_name || offer.validating_airline}
+                            {offer.metadatos?.carrier_name || firstOutbound.aerolinea}
                         </p>
                         <p className="text-xs text-text-muted">
-                            {firstOutbound.flight_number}
-                            {fareDetails?.branded_fare_label && (
-                                <span className="ml-2 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded text-[10px] font-medium">
-                                    {fareDetails.branded_fare_label}
-                                </span>
-                            )}
+                            {firstOutbound.numeroVuelo || 'Vuelo de oferta'} • {returnFlight ? 'Ida y Vuelta' : 'Solo ida'}
                         </p>
                     </div>
-                </div>
-                {/* Baggage icons */}
-                <div className="flex items-center gap-2 text-text-muted">
-                    {fareDetails?.baggage?.cabin_bags_quantity !== undefined && fareDetails.baggage.cabin_bags_quantity > 0 && (
-                        <div className="flex items-center gap-1 text-xs" title="Equipaje de mano incluido">
-                            <span className="material-symbols-outlined text-[16px]">backpack</span>
-                            <span>{fareDetails.baggage.cabin_bags_quantity}</span>
-                        </div>
-                    )}
-                    {fareDetails?.baggage?.checked_bags_quantity !== undefined && (
-                        <div className={`flex items-center gap-1 text-xs ${fareDetails.baggage.checked_bags_quantity > 0 ? 'text-emerald-500' : 'text-text-muted line-through'}`}
-                            title={fareDetails.baggage.checked_bags_quantity > 0 ? 'Equipaje facturado incluido' : 'Sin equipaje facturado'}>
-                            <span className="material-symbols-outlined text-[16px]">luggage</span>
-                            <span>{fareDetails.baggage.checked_bags_quantity}</span>
-                        </div>
-                    )}
                 </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-6 justify-between">
                 {/* Flight Info */}
-                <div className="flex-1 space-y-4">
-                    {/* Outbound */}
+                <div className="flex-1 space-y-6">
+                    {/* IDA */}
                     <div>
                         <div className="flex items-center gap-4">
                             <div className="text-center min-w-[60px]">
                                 <span className="font-bold text-lg text-text-main dark:text-white block">
-                                    {format(new Date(firstOutbound.departure_time), 'HH:mm')}
+                                    {format(new Date(offer.fechaSalida), 'HH:mm')}
                                 </span>
-                                <span className="text-xs text-text-muted">{firstOutbound.departure_airport}</span>
+                                <span className="text-xs text-text-muted">{offer.aeropuertoOrigen}</span>
                                 <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
-                                    {getAirportCity(firstOutbound.departure_airport)}
+                                    {getAirportCity(offer.aeropuertoOrigen)}
                                 </span>
-                                {firstOutbound.departure_terminal && (
-                                    <span className="text-[10px] text-text-muted block">T{firstOutbound.departure_terminal}</span>
-                                )}
                             </div>
 
                             <div className="flex-1 flex flex-col items-center">
-                                <span className="text-xs text-text-muted">{formatDuration(offer.total_duration)}</span>
+                                <span className="text-[10px] font-bold text-voaya-primary uppercase tracking-tighter">Ida</span>
                                 <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative my-1">
-                                    {offer.stops > 0 && outbound.slice(0, -1).map((seg, i) => (
+                                    {outbound.length > 1 && outbound.slice(0, -1).map((_: any, i: number) => (
                                         <div key={i}
                                             className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
-                                            style={{ left: `${((i + 1) / offer.stops) * 80 + 10}%` }}
-                                            title={`${seg.arrival_airport} - ${getAirportCity(seg.arrival_airport)}`}
+                                            style={{ left: `${((i + 1) / outbound.length) * 100}%` }}
                                         />
                                     ))}
                                 </div>
-                                <span className={`text-[10px] font-medium ${offer.stops === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                    {offer.stops > 0 ? `${offer.stops} escala${offer.stops > 1 ? 's' : ''} (${getStopoverAirports(outbound)})` : 'Directo'}
+                                <span className={`text-[10px] font-medium ${outbound.length <= 1 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                    {outbound.length <= 1 ? 'Directo' : `${outbound.length - 1} escala(s)`}
                                 </span>
                             </div>
 
                             <div className="text-center min-w-[60px]">
                                 <span className="font-bold text-lg text-text-main dark:text-white block">
-                                    {format(new Date(lastOutbound.arrival_time), 'HH:mm')}
+                                    {format(new Date(offer.fechaLlegada), 'HH:mm')}
                                 </span>
-                                <span className="text-xs text-text-muted">{lastOutbound.arrival_airport}</span>
+                                <span className="text-xs text-text-muted">{offer.aeropuertoDestino}</span>
                                 <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
-                                    {getAirportCity(lastOutbound.arrival_airport)}
+                                    {getAirportCity(offer.aeropuertoDestino)}
                                 </span>
-                                {lastOutbound.arrival_terminal && (
-                                    <span className="text-[10px] text-text-muted block">T{lastOutbound.arrival_terminal}</span>
-                                )}
                             </div>
                         </div>
-
-                        {/* Aircraft info */}
-                        {firstOutbound.aircraft_name && (
-                            <p className="text-[10px] text-text-muted mt-1 text-center">
-                                ✈️ {firstOutbound.aircraft_name}
-                                {firstOutbound.operating_carrier_name && firstOutbound.operating_carrier_code !== firstOutbound.carrier_code && (
-                                    <span> · Operado por {firstOutbound.operating_carrier_name}</span>
-                                )}
-                            </p>
-                        )}
                     </div>
 
-                    {/* Return (if exists) */}
-                    {returnFlight && returnFlight.length > 0 && (
-                        <div className="border-t border-dashed border-stroke dark:border-input-dark pt-4">
+                    {/* VUELTA (si existe) */}
+                    {returnFlight && (
+                        <div className="pt-4 border-t border-dashed border-stroke dark:border-input-dark/50">
                             <div className="flex items-center gap-4">
                                 <div className="text-center min-w-[60px]">
                                     <span className="font-bold text-lg text-text-main dark:text-white block">
-                                        {format(new Date(returnFlight[0].departure_time), 'HH:mm')}
+                                        {format(new Date(returnFlight.fechaSalida), 'HH:mm')}
                                     </span>
-                                    <span className="text-xs text-text-muted">{returnFlight[0].departure_airport}</span>
+                                    <span className="text-xs text-text-muted">{returnFlight.aeropuertoOrigen}</span>
                                     <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
-                                        {getAirportCity(returnFlight[0].departure_airport)}
+                                        {getAirportCity(returnFlight.aeropuertoOrigen)}
                                     </span>
-                                    {returnFlight[0].departure_terminal && (
-                                        <span className="text-[10px] text-text-muted block">T{returnFlight[0].departure_terminal}</span>
-                                    )}
                                 </div>
 
                                 <div className="flex-1 flex flex-col items-center">
-                                    <span className="text-xs text-text-muted">{formatDuration(returnFlight[0].duration)}</span>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Vuelta</span>
                                     <div className="w-full h-[2px] bg-stroke dark:bg-input-dark relative my-1">
-                                        {returnFlight.length > 1 && returnFlight.slice(0, -1).map((seg, i) => (
+                                        {returnFlight.escalas?.length > 1 && returnFlight.escalas.slice(0, -1).map((_: any, i: number) => (
                                             <div key={i}
                                                 className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-amber-500 border-2 border-white dark:border-card-dark"
-                                                style={{ left: `${((i + 1) / (returnFlight.length - 1)) * 80 + 10}%` }}
-                                                title={`${seg.arrival_airport} - ${getAirportCity(seg.arrival_airport)}`}
+                                                style={{ left: `${((i + 1) / returnFlight.escalas.length) * 100}%` }}
                                             />
                                         ))}
                                     </div>
-                                    <span className={`text-[10px] font-medium ${returnFlight.length === 1 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                        {returnFlight.length > 1 ? `${returnFlight.length - 1} escala${returnFlight.length > 2 ? 's' : ''} (${getStopoverAirports(returnFlight)})` : 'Directo'}
+                                    <span className={`text-[10px] font-medium ${returnFlight.escalas?.length <= 1 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                        {returnFlight.escalas?.length <= 1 ? 'Directo' : `${returnFlight.escalas.length - 1} escala(s)`}
                                     </span>
                                 </div>
 
                                 <div className="text-center min-w-[60px]">
                                     <span className="font-bold text-lg text-text-main dark:text-white block">
-                                        {format(new Date(returnFlight[returnFlight.length - 1].arrival_time), 'HH:mm')}
+                                        {format(new Date(returnFlight.fechaLlegada), 'HH:mm')}
                                     </span>
-                                    <span className="text-xs text-text-muted">{returnFlight[returnFlight.length - 1].arrival_airport}</span>
+                                    <span className="text-xs text-text-muted">{returnFlight.aeropuertoDestino}</span>
                                     <span className="text-[9px] text-text-secondary dark:text-text-muted block max-w-[80px] truncate">
-                                        {getAirportCity(returnFlight[returnFlight.length - 1].arrival_airport)}
+                                        {getAirportCity(returnFlight.aeropuertoDestino)}
                                     </span>
-                                    {returnFlight[returnFlight.length - 1].arrival_terminal && (
-                                        <span className="text-[10px] text-text-muted block">T{returnFlight[returnFlight.length - 1].arrival_terminal}</span>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -670,31 +641,17 @@ const FlightCard = ({ offer }: { offer: FlightOffer }) => {
 
                 {/* Price & Action */}
                 <div className="md:border-l border-stroke dark:border-input-dark md:pl-6 flex flex-col justify-center items-end min-w-[150px]">
-                    {offer.number_of_bookable_seats && offer.number_of_bookable_seats < 5 && (
-                        <span className="text-[10px] text-amber-500 font-medium mb-1">
-                            ¡Solo {offer.number_of_bookable_seats} plazas!
-                        </span>
-                    )}
-                    <span className="text-xs text-text-muted mb-1">Total por persona</span>
+                    <span className="text-xs text-text-muted mb-1">Precio total (I/V)</span>
                     <span className="text-2xl font-black text-text-main dark:text-white font-display">
-                        {offer.currency} {offer.price}
+                        {offer.moneda} {offer.precio}
                     </span>
-                    {offer.base_price && offer.base_price !== offer.price && (
-                        <span className="text-[10px] text-text-muted">Base: {offer.currency} {offer.base_price}</span>
-                    )}
                     <button
                         onClick={handleBookingClick}
-                        disabled={!offer.booking_url}
-                        className="mt-4 w-full py-2.5 px-4 bg-voaya-primary text-white text-sm font-bold rounded-xl hover:bg-voaya-primary-dark transition-colors shadow-sm hover:shadow-md active:scale-95 transform duration-100 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-4 w-full py-2.5 px-4 bg-voaya-primary text-white text-sm font-bold rounded-xl hover:bg-voaya-primary-dark transition-colors shadow-sm hover:shadow-md active:scale-95 transform duration-100 flex items-center justify-center gap-2"
                     >
                         Ver oferta
                         <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                     </button>
-                    {offer.last_ticketing_date && (
-                        <span className="text-[10px] text-text-muted mt-2">
-                            Reservar antes: {format(new Date(offer.last_ticketing_date), 'dd MMM', { locale: es })}
-                        </span>
-                    )}
                 </div>
             </div>
         </div>
@@ -761,22 +718,15 @@ export default function TripDetailPage() {
     // Microservice URL
     const AGENT_URL = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:3003';
 
-    // Refresh search function (when expired)
+    // Refresh search function (when expired or manually triggered)
     const refreshSearch = async () => {
         if (!viaje?.id) return;
         setLoading(true);
         setIsExpired(false);
         try {
             // Trigger new search via backend
-            await fetch(`${AGENT_URL}/search-flights`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tripId: viaje.id,
-                    extracted_data: viaje.metadatos?.extracted_data,
-                    secret: process.env.NEXT_PUBLIC_WEBHOOK_SECRET
-                })
-            });
+            await ApiService.reBuscarVuelos(viaje.id);
+            
             // Poll will pick up new results
             setViaje(prev => prev ? {
                 ...prev,
@@ -787,52 +737,52 @@ export default function TripDetailPage() {
             } : null);
         } catch (err) {
             console.error('Error refreshing search:', err);
+            setError('Error al iniciar la nueva búsqueda de vuelos');
+        } finally {
             setLoading(false);
         }
     };
 
-    // Fetch initial flights from cache
+    // Fetch initial flights from Express backend
     const fetchInitialFlights = async () => {
         if (!viaje?.id) return;
-        // Don't set global loading as we might be showing skeleton
 
         try {
-            const response = await fetch(`${AGENT_URL}/cache/${viaje.id}?page=1&page_size=10`);
+            const data = await ApiService.obtenerVuelosDelViaje(viaje.id);
 
-            if (response.ok) {
-                const data = await response.json();
+            if (data.status === 'expired') {
+                setIsExpired(true);
+                return;
+            }
 
-                if (data.status === 'expired') {
-                    setIsExpired(true);
-                    return;
-                }
+            if (data.offers) {
+                setDisplayedOffers(data.offers);
+                setTotalOffers(data.total_offers || 0);
+                setCurrentPage(1);
+                setHasMore(false); // Express currently returns all top results at once
 
-                if (data.offers) {
-                    setDisplayedOffers(data.offers);
-                    setHasMore(data.has_more || false);
-                    setTotalOffers(data.total_offers || 0);
-                    setCurrentPage(1);
-
-                    // Extract all airport codes to resolve
-                    const codes = new Set<string>();
-                    data.offers.forEach((offer: FlightOffer) => {
-                        offer.outbound_segments?.forEach(s => {
-                            codes.add(s.departure_airport);
-                            codes.add(s.arrival_airport);
+                // Extract all airport codes to resolve
+                const codes = new Set<string>();
+                data.offers.forEach((offer: any) => {
+                    if (offer.escalas) {
+                        offer.escalas.forEach((s: any) => {
+                            codes.add(s.origen);
+                            codes.add(s.destino);
                         });
-                        offer.return_segments?.forEach(s => {
-                            codes.add(s.departure_airport);
-                            codes.add(s.arrival_airport);
-                        });
-                    });
-                    resolveAirportCodes(Array.from(codes));
+                    } else {
+                        codes.add(offer.aeropuertoOrigen);
+                        codes.add(offer.aeropuertoDestino);
+                    }
+                });
+                resolveAirportCodes(Array.from(codes));
 
-                    // Extract filter options from first load
-                    const airlines = new Set<string>();
-                    data.offers.forEach((o: FlightOffer) => {
-                        if (o.validating_airline) airlines.add(o.validating_airline);
-                    });
-                    const prices = data.offers.map((o: FlightOffer) => parseFloat(o.price));
+                // Extract filter options from first load
+                const airlines = new Set<string>();
+                data.offers.forEach((o: any) => {
+                    if (o.metadatos?.carrier_name) airlines.add(o.metadatos.carrier_name);
+                });
+                const prices = data.offers.map((o: any) => o.precio);
+                if (prices.length > 0) {
                     setFilterOptions({
                         airlines: Array.from(airlines).sort(),
                         price_range: {
@@ -841,9 +791,6 @@ export default function TripDetailPage() {
                         }
                     });
                 }
-            } else if (response.status === 404) {
-                // Convert 404 to expired if we expected results
-                setIsExpired(true);
             }
         } catch (err) {
             console.error('Error fetching initial flights:', err);
@@ -852,7 +799,7 @@ export default function TripDetailPage() {
 
     // Initialize: Fetch flights when trip is loaded and status is completed
     useEffect(() => {
-        if (viaje?.id && viaje?.metadatos?.flight_status === 'completed' && displayedOffers.length === 0 && !isExpired && !isFilteredView) {
+        if (viaje?.id && viaje?.metadatos?.flight_status === 'completed' && !isExpired && !isFilteredView) {
             fetchInitialFlights();
         }
     }, [viaje?.id, viaje?.metadatos?.flight_status, isExpired]);
@@ -943,24 +890,18 @@ export default function TripDetailPage() {
         }
     };
 
-    // Resolve airport codes to cities
+    // Resolve airport codes to cities via Express backend
     const resolveAirportCodes = async (codes: string[]) => {
         const unresolvedCodes = codes.filter(c => c && !airportCache[c]);
         if (unresolvedCodes.length === 0) return;
 
         try {
-            const response = await fetch(`${AGENT_URL}/iata/batch`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(unresolvedCodes)
+            const data = await ApiService.resolverIataBatch(unresolvedCodes);
+            Object.entries(data).forEach(([code, info]: [string, any]) => {
+                airportCache[code] = { city: info.city, country: info.country };
             });
-
-            if (response.ok) {
-                const data = await response.json();
-                Object.entries(data).forEach(([code, info]: [string, any]) => {
-                    airportCache[code] = { city: info.city, country: info.country };
-                });
-            }
+            // Force re-render to show names
+            setViaje(prev => ({ ...prev } as ViajeDetail));
         } catch (err) {
             console.error('Error resolving airport codes:', err);
         }
@@ -1055,7 +996,12 @@ export default function TripDetailPage() {
         <main className="min-h-screen bg-background-light dark:bg-background pb-20">
 
             {/* 1. HERO HEADER */}
-            <TripHeader viaje={viaje} extracted={extracted} />
+            <TripHeader 
+                viaje={viaje} 
+                extracted={extracted} 
+                onRefresh={refreshSearch} 
+                isRefreshing={loading} 
+            />
 
             <div className="max-w-[1200px] mx-auto px-6 -mt-10 relative z-20">
                 <div className="flex flex-col lg:flex-row gap-8">

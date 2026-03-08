@@ -117,6 +117,54 @@ class GeminiService {
 
         throw new Error(`Gemini request failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
     }
+
+    /**
+     * Extracts travel data from chat history in a structured JSON format.
+     */
+    async extractTravelData(messages: ChatMessage[]): Promise<any> {
+        if (!this.client) {
+            throw new Error('Gemini not initialized.');
+        }
+
+        const model = this.client.getGenerativeModel({
+            model: MODEL_ID,
+            generationConfig: {
+                temperature: 0.1,
+                responseMimeType: 'application/json',
+            },
+        });
+
+        const prompt = `
+            Analyze the following travel chat history and extract key information in structured JSON format.
+            Current date for relative reference: ${new Date().toLocaleDateString()} (Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long' })}).
+
+            The JSON MUST include:
+            - destination_name: Full name of the destination.
+            - departure_date: YYYY-MM-DD format. If they say "this Friday", calculate the date based on today.
+            - return_date: YYYY-MM-DD format. Look for "weekend", "Sunday", "back on...", or implied trip duration.
+            - is_round_trip: boolean. true if a return date or "round trip" is mentioned.
+            - passengers: Object with { adults: number, children: number, infants: number }. Default adults to 1 if not specified.
+            - origin: IATA code or city name of departure.
+            - destination: IATA code or city name of arrival.
+            - trip_type: string (e.g., "Negocios", "Vacaciones", "Escapada").
+            - budget: string if mentioned.
+            - extraction_confidence: number 0-1.
+
+            Chat History:
+            ${messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('[Gemini] Failed to parse extraction JSON:', text);
+            return null;
+        }
+    }
 }
 
 export const geminiService = new GeminiService();

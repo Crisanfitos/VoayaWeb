@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { supabaseAdmin } from '../../supabase/admin';
-import { geminiService, type ChatMessage } from '../../services/ai/gemini.service';
+import { geminiService, type ChatMessage as GeminiChatMessage } from '../../services/ai/gemini.service';
 import { buildSystemPrompt } from '../../services/ai/system-prompts';
 import { generateProvisionalTitle, generateFinalTitle } from '../../services/title-generator.service';
+import { VueloService } from '../../services/vuelo.service';
+import { ImageService } from '../../services/image.service';
 import type { FlightOptions } from './types';
 
 const router = Router();
@@ -167,13 +169,13 @@ router.post('/message', async (req, res) => {
             .limit(20);
 
         // Build messages array for AI (excluding current as it's not saved yet)
-        const contextMessages: ChatMessage[] = (previousMessages || []).map(m => ({
+        const contextMessages: GeminiChatMessage[] = (previousMessages || []).map(m => ({
             role: m.rol as 'user' | 'assistant' | 'system',
             content: m.contenido
         }));
 
         // Add current message to form complete message list
-        const messages: ChatMessage[] = [...contextMessages, { role: 'user', content: text }];
+        const messages: GeminiChatMessage[] = [...contextMessages, { role: 'user', content: text }];
 
         // Log context for debugging
         console.log(`[Chat API] Context: ${contextMessages.length} previous messages + 1 new = ${messages.length} total`);
@@ -277,36 +279,25 @@ router.post('/complete', async (req, res) => {
             })
             .eq('id', chatId);
 
-        // Gather chat data
+        // Gather chat messages for AI context
         const { data: messages } = await supabaseAdmin
             .from('mensajes')
             .select('*')
             .eq('chat_id', chatId)
             .order('fecha_creacion', { ascending: true });
 
-        const formattedMessages = messages?.map(mapMessageToApi) || [];
-        const formattedChat = mapChatToApi(chatData);
+        const contextMessages: GeminiChatMessage[] = (messages || []).map(m => ({
+            role: m.rol as 'user' | 'assistant' | 'system',
+            content: m.contenido
+        }));
 
-        const agentsUrl = process.env.AGENTS_URL || 'http://localhost:3003';
-        const webhookSecret = process.env.WEBHOOK_SECRET;
-
-        // 1. SYNC EXTRACTION
+        // 1. SYNC EXTRACTION using Gemini
         console.log(`[Chat Complete] Requesting extraction for chat ${chatId}`);
         let extractedData = null;
         try {
-            const extractRes = await fetch(`${agentsUrl}/extract`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat: formattedChat,
-                    messages: formattedMessages,
-                    secret: webhookSecret
-                })
-            });
+            extractedData = await geminiService.extractTravelData(contextMessages);
 
-            if (extractRes.ok) {
-                extractedData = await extractRes.json();
-
+            if (extractedData) {
                 // Generate and update final title based on extracted data
                 const finalTitle = generateFinalTitle({
                     destinationName: extractedData?.destination_name,
@@ -322,27 +313,15 @@ router.post('/complete', async (req, res) => {
                     .eq('id', chatId);
 
                 console.log(`[Chat Complete] Updated chat title to: ${finalTitle}`);
-            } else {
-                console.error('[Chat Complete] Extraction failed', await extractRes.text());
             }
         } catch (e) {
             console.error('[Chat Complete] Extraction error', e);
         }
 
         // 2. CREATE TRIP (VIAJE)
-        // Resolve Image dynamically
         let imagenUrl = null;
         if (extractedData?.destination_name) {
             try {
-                // Import ImageService dynamically or ensure it's imported at top. 
-                // Since this is inside an async function, dynamic import is cleaner if we didn't add top-level import yet, 
-                // but let's assume we'll add the import. For this tool, I'll stick to logic here.
-                // WE MUST ADD THE IMPORT AT THE TOP FIRST? No, I can do it in two steps or just use require if needed, 
-                // but better to add import. I'll simply assume I can add the logic here and then add import.
-                // Actually, let's use the class directly and I'll add the import in a separate tool or same tool if I can?
-                // `replace_file_content` works on a block. I can't easily add import at top AND change code in middle in one go unless I replace whole file.
-                // I'll do the logic here and then add the import.
-                const { ImageService } = require('../../services/image.service');
                 imagenUrl = await ImageService.resolveImage(extractedData.destination_name);
             } catch (err) {
                 console.error('[Chat Complete] Failed to resolve image:', err);
@@ -359,7 +338,7 @@ router.post('/complete', async (req, res) => {
             imagen_url: imagenUrl,
             metadatos: {
                 extracted_data: extractedData,
-                flight_status: 'searching', // Initial status
+                flight_status: 'searching', 
                 created_from_chat: true
             }
         };
@@ -378,20 +357,48 @@ router.post('/complete', async (req, res) => {
         const tripId = viaje.id;
         console.log(`[Chat Complete] Trip created: ${tripId}`);
 
-        // 3. ASYNC SEARCH (Fire and Forget)
-        if (extractedData && extractedData.extraction_confidence > 0.4) {
-            // Only search if we have decent data
-            fetch(`${agentsUrl}/search-flights`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tripId: tripId,
-                    extracted_data: extractedData,
-                    secret: webhookSecret
-                })
-            }).catch(err => {
-                console.error('[Chat Complete] Failed to trigger flight search:', err);
-            });
+        // 3. ASYNC SEARCH (Background Task)
+        if (extractedData && extractedData.extraction_confidence > 0.4 && extractedData.origin && extractedData.destination && extractedData.departure_date) {
+            // Background task for flight search
+            (async () => {
+                try {
+                    console.log(`[Background Search] Starting flight search for trip ${tripId}`);
+                    const flights = await VueloService.buscarVuelos({
+                        origen: extractedData.origin,
+                        destino: extractedData.destination,
+                        fechaSalida: extractedData.departure_date,
+                        fechaRegreso: extractedData.return_date,
+                        adultos: extractedData.passengers?.adults || 1
+                    });
+
+                    // Update trip with flight results
+                    await supabaseAdmin
+                        .from('viajes')
+                        .update({
+                            metadatos: {
+                                ...viajeData.metadatos,
+                                flight_status: 'completed',
+                                flights_found: flights.length,
+                                recommended_flights: flights.slice(0, 10) // Store top 10 in metadata
+                            }
+                        })
+                        .eq('id', tripId);
+                    
+                    console.log(`[Background Search] Found ${flights.length} flights for trip ${tripId}`);
+                } catch (err) {
+                    console.error(`[Background Search] Error for trip ${tripId}:`, err);
+                    await supabaseAdmin
+                        .from('viajes')
+                        .update({
+                            metadatos: {
+                                ...viajeData.metadatos,
+                                flight_status: 'error',
+                                flight_error: (err as any).message
+                            }
+                        })
+                        .eq('id', tripId);
+                }
+            })();
         }
 
         // 4. RETURN RESPONSE WITH TRIP ID
